@@ -12,6 +12,7 @@ conglomerates_df <- collect(conglomerates)
 conglomerado_muestra <- conglomerates_df %>%
   filter(nchar(name) <= 5)
 
+# Separar longitud, altitud, ...
 
 sitio_lat <- conglomerado_muestra %>%
   select(name, central_lat, transect2_lat, transect3_lat, transect4_lat) %>%
@@ -43,4 +44,8 @@ sitios <- inner_join(sitio_lat, sitio_lon) %>%
   inner_join(sitio_ellipsoid) %>%
   inner_join(sitio_gps_error)
 
+sitios$date <- today()
 sitios
+
+copy_to(base_input, sitios, name = "sitios_fecha", temporary = FALSE)
+base_input
