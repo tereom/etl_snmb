@@ -13,7 +13,7 @@ library(stringr)
 base_input <- src_sqlite("../datos/base_input.db")
 
 # Creando la base de datos de salida
-base_output <- src_sqlite("../datos/base_output.db", create=T)
+base_output <- src_sqlite("../datos/base_output.db")
 ######################################
 
 ######################################

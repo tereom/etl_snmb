@@ -72,13 +72,14 @@ Sitio_muestra <- sitio %>%
     existe = TRUE,
     lat = as.numeric(lat),
     lon = as.numeric(lon),
-    lat_grado = floor(lat), 
-    lat_min = floor(60 * (lat - lat_grado)),
-    lat_seg = (3600 * (lat - lat_grado - lat_min / 60)),
-    lon_grado = floor(lon), 
-    lon_min = floor(60 * (lon - lon_grado)),
-    lon_seg = (3600 * (lon - lon_grado - lon_min / 60)),
-    altitud = altitude,
+    lat_grado = as.integer(lat), 
+    lat_min = floor(60 * abs(lat - lat_grado)),
+    lat_seg = (3600 * abs(lat - lat_grado - sign(lat) * lat_min / 60)),
+    lon_grado = as.integer(lon), 
+    lon_min = floor(60 * abs(lon - lon_grado)),
+    lon_seg = (3600 * abs(lon - lon_grado - sign(lon) * lon_min / 60)),
+    altitud = as.numeric(altitude),
+    gps_error = as.numeric(gps_error),
     hay_evidencia = NA
     ) %>% 
   select(-lat, -lon, -altitude, -sitio)
