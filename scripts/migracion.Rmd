@@ -174,9 +174,15 @@ Transecto_especies_invasoras_muestra <- transecto_especies_invasoras %>%
 
 Especie_invasora <- transecto_especies_invasoras %>%
   mutate(
-    nombre_en_lista = NA, 
-    )
-  select(id, transecto_especies_invasoras_id, )
+    nombre_en_lista = !is.na(conabio_list_name),
+    numero_individuos = as.character(cut(number_individuals, 
+      breaks = c(-Inf, 0, 5, 10, 90, 99), 
+      labels = c("No aplica", "1 a 5", "6 a 10", "más de 10", "No aplica"))),
+    nombre_comun = ifelse(name_type == "common name", species_name, NA), 
+    nombre_cientifico = ifelse(name_type != "common name", species_name, NA)
+  ) %>%
+  select(id, transecto_especies_invasoras_id, nombre_en_lista, nombre_comun, 
+    nombre_cientifico, numero_individuos)
     
 ```
 
