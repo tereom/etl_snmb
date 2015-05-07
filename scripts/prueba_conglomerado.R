@@ -94,4 +94,3 @@ sitios <- inner_join(sitio_lat, sitio_lon) %>%
 sitios
 
 copy_to(base_output, sitios, name = "sitios_id", temporary = FALSE)
-base_output
