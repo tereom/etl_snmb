@@ -1,0 +1,67 @@
+---
+title: "Migracion de primera versión"
+output: html_document
+---
+
+
+```{r, message=FALSE}
+library(RSQLite)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+```
+
+
+La siguiente función lee la base de datos (dir), extrae una tabla (tabla) y 
+regresa un _data frame_ con la tabla.
+
+```{r}
+leerDbTab <- function(dir, tabla){
+  base_input <- src_sqlite(dir)
+  tabla <- tbl(base_input, tabla)
+  tabla_df <- collect(tabla)
+}
+```
+
+
+### conglomerates -> Conglomerado_muestra y Sitio_muestra
+
+1. Leemos las tablas de conglomerado y creamos un id utilizando la parte 
+numérica del nombre de la base de datos y la columna id de la misma.
+
+```{r}
+# Leemos las rutas de las bases de datos de entrada
+bases_rutas <- list.files(path = "../datos/bases_entrada", full.names = TRUE)
+names(bases_rutas) <- extract_numeric(basename(bases_rutas))
+
+conglomerado <- ldply(bases_rutas, leerDbTab, "conglomerates")
+
+conglomerado <- conglomerado %>%
+  filter(nchar(name) <= 5) %>%  # quitamos conglomerados con nombres mal
+  mutate(
+    id = as.numeric(paste(id, .id, sep = "")) # creamos nueva columna id
+    ) %>%
+  select(-.id) # eliminamos la columna auxiliar .id
+```
+
+2. Separamos en las dos tablas Conglomerado\_muestra y Sitio\_muestra
+
+```{r}
+separarSitios <- function(base_df, variable){
+  base_var <- base_df  %>%
+    select(id, contains(variable)) %>%
+    gather(sitio, value, -id) %>%
+    mutate(sitio = str_extract(sitio, "[[:alnum:]]+"))
+  base_var
+}
+
+# variables que extraemos para la tabla Sitio_muestra
+variables <- c("lat", "lon", "altitude", "ellipsoid", "gps_error")
+names(variables) <- variables
+
+sitio <- ldply(variables, separarSitios, base_df = conglomerado) %>%
+  spread(.id, value)
+
+```
+
