@@ -54,13 +54,18 @@ Conglomerado_muestra <- conglomerado %>%
   mutate(
     nombre = name, 
     fecha_visita = visit_date, 
-    compania = NA,
-    monitoreo_tipo = "SAC-MOD", 
+    compania = NA_character_,
     tipo = revalue(conglomerate_type, c("07) Biodiversidad" = "7 Biodiversidad")),
     estado = state,
     tenencia = revalue(property, c("01) Ejidal" = "1 Ejidal", 
-      "03) Propriedad Particular" = "3 Propiedad particular"))
-  select(nombre = name, fecha_visita = visit_date, )
+      "03) Propriedad Particular" = "3 Propiedad particular")), 
+    uso_suelo_tipo = NA_character_, 
+    monitoreo_tipo = "SAC-MOD", 
+    vegetacion_tipo = NA_character_, 
+    perturbado = NA,
+    comentario = comment) %>%
+  select(id, nombre, fecha_visita, compania, tipo, estado, municipio, tenencia, 
+         uso_suelo_tipo, monitoreo_tipo, vegetacion_tipo, perturbado, comentario)
 
 separarSitios <- function(base_df, variable){
   base_var <- base_df  %>%
