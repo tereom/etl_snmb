@@ -35,9 +35,9 @@ numérica del nombre de la base de datos y la columna id de la misma.
 bases_rutas <- list.files(path = "../datos/bases_entrada", full.names = TRUE)
 names(bases_rutas) <- extract_numeric(basename(bases_rutas))
 
-conglomerado_tabs <- ldply(bases_rutas, leerDbTab, "conglomerates")
+conglomerates <- ldply(bases_rutas, leerDbTab, "conglomerates")
 
-conglomerado <- conglomerado_tabs %>%
+conglomerado <- conglomerates %>%
   filter(nchar(name) <= 5) %>%  # quitamos conglomerados con nombres mal
   mutate(
     id = as.numeric(paste(.id, id, sep = "")) # creamos nueva columna id
@@ -52,7 +52,7 @@ conglomerado <- conglomerado_tabs %>%
 ```{r}
 Conglomerado_muestra <- conglomerado %>% 
   mutate(
-    nombre = name, 
+    nombre = as.integer(name), 
     fecha_visita = visit_date, 
     compania = NA_character_,
     tipo = revalue(conglomerate_type, c("07) Biodiversidad" = "7 Biodiversidad")),
@@ -64,8 +64,9 @@ Conglomerado_muestra <- conglomerado %>%
     vegetacion_tipo = NA_character_, 
     perturbado = NA,
     comentario = comment) %>%
-  select(id, nombre, fecha_visita, compania, tipo, estado, municipio, tenencia, 
-         uso_suelo_tipo, monitoreo_tipo, vegetacion_tipo, perturbado, comentario)
+  select(id, nombre, fecha_visita, predio, compania, tipo, estado, municipio,
+    tenencia, uso_suelo_tipo, monitoreo_tipo, vegetacion_tipo, perturbado,
+    comentario)
 
 separarSitios <- function(base_df, variable){
   base_var <- base_df  %>%
@@ -91,13 +92,14 @@ Sitio_muestra <- sitio %>%
     existe = TRUE,
     lat = as.numeric(lat),
     lon = as.numeric(lon),
-    lat_grado = floor(lat), 
-    lat_min = floor(60 * (lat - lat_grado)),
-    lat_seg = (3600 * (lat - lat_grado - lat_min / 60)),
-    lon_grado = floor(lon), 
-    lon_min = floor(60 * (lon - lon_grado)),
-    lon_seg = (3600 * (lon - lon_grado - lon_min / 60)),
-    altitud = altitude,
+    lat_grado = as.integer(lat), 
+    lat_min = floor(60 * abs(lat - lat_grado)),
+    lat_seg = (3600 * abs(lat - lat_grado - sign(lat) * lat_min / 60)),
+    lon_grado = as.integer(lon), 
+    lon_min = floor(60 * abs(lon - lon_grado)),
+    lon_seg = (3600 * abs(lon - lon_grado - sign(lon) * lon_min / 60)),
+    altitud = as.numeric(altitude),
+    gps_error = as.numeric(gps_error),
     hay_evidencia = NA
     ) %>% 
   select(-lat, -lon, -altitude, -sitio)
@@ -258,7 +260,7 @@ Transecto_huellas_excretas_muestra <- transecto_transecto_huellas_excretas %>%
     transecto_numero, tecnico, hora_inicio, hora_termino, comentario)
 
 
-Especie_invasora <- transecto_transecto_huellas_excretas %>%
+Huella_excreta <- transecto_transecto_huellas_excretas %>%
   
   
   mutate(
@@ -271,4 +273,16 @@ Especie_invasora <- transecto_transecto_huellas_excretas %>%
   ) %>%
   select(id, transecto_especies_invasoras_id, nombre_en_lista, nombre_comun, 
     nombre_cientifico, numero_individuos)  
+
+```
+
+```{r´}
+base_output <- dbConnect(RSQLite::SQLite(), "../datos/base_salida/base_output.db")
+
+dbWriteTable(base_output, "Conglomerado_muestra", Conglomerado_muestra,
+      overwrite = FALSE, append = TRUE)
+dbCommit(base_output)
+dbDisconnect(base_output)
+dbWriteTable(base_output, "Sitio_muestra", Sitio_muestra,
+      overwrite = FALSE, append = TRUE)
 ```
