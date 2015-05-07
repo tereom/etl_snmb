@@ -13,7 +13,7 @@ library(stringr)
 base_input <- src_sqlite("../datos/base_input.db")
 
 # Creando la base de datos de salida
-base_output <- src_sqlite("../datos/base_output.db", create=T)
+base_output <- src_sqlite("../datos/base_output.db", create = TRUE)
 ######################################
 
 ######################################
@@ -43,13 +43,14 @@ conglomerates_filtrado <- conglomerates_df %>%
 
 # Generando "conglomerado_muestra_id":
 conglomerado_muestra_id <- c()
-for(i in 1:dim(conglomerates_filtrado)[1])
-{
-  conglomerado_muestra_id <- c(conglomerado_muestra_id, nextElem(generador_conglomerado_muestra_id))
+for(i in 1:dim(conglomerates_filtrado)[1]){
+  conglomerado_muestra_id <- c(conglomerado_muestra_id, 
+    nextElem(generador_conglomerado_muestra_id))
 }
 
 # Agregando la nueva columna al data frame "conglomerates_filtrado"
-conglomerates_filtrado_id <- data.frame(conglomerates_filtrado, conglomerado_muestra_id)
+conglomerates_filtrado_id <- data.frame(conglomerates_filtrado, 
+  conglomerado_muestra_id)
 
 # Cambiando el nombre y tipo de las columnas, para hacerlas compatibles con el nuevo
 # cliente:
@@ -59,25 +60,28 @@ conglomerates_filtrado_id <- data.frame(conglomerates_filtrado, conglomerado_mue
 # Separar longitud, altitud, ...
 
 sitio_lat <- conglomerates_filtrado_id %>%
-  select(id, conglomerado_muestra_id, central_lat, transect2_lat, transect3_lat, transect4_lat) %>%
+  select(id, conglomerado_muestra_id, central_lat, transect2_lat, transect3_lat, 
+    transect4_lat) %>%
   gather(sitio, lat, -id, -conglomerado_muestra_id) %>%
   mutate(sitio = str_extract(sitio, "[[:alnum:]]+"))
 # Gather crea por cada campo especificado, un registro, con dos campos (más los
 # campos no especificados como name): nombre del campo original y valor.
 
 sitio_lon <- conglomerates_filtrado_id %>%
-  select(id, conglomerado_muestra_id, central_lat, transect2_lat, transect3_lat, transect4_lat) %>%
-  gather(sitio, lat, -id, -conglomerado_muestra_id) %>%
+  select(id, conglomerado_muestra_id, central_lon, transect2_lon, transect3_lon, 
+    transect4_lon) %>%
+  gather(sitio, lon, -id, -conglomerado_muestra_id) %>%
   mutate(sitio = str_extract(sitio, "[[:alnum:]]+"))
 
 sitio_altitude <- conglomerates_filtrado_id %>%
-  select(id, conglomerado_muestra_id, central_lat, transect2_lat, transect3_lat, transect4_lat) %>%
-  gather(sitio, lat, -id, -conglomerado_muestra_id) %>%
+  select(id, conglomerado_muestra_id, central_altitude, transect2_altitude, 
+    transect3_altitude, transect4_altitude) %>%
+  gather(sitio, altitude, -id, -conglomerado_muestra_id) %>%
   mutate(sitio = str_extract(sitio, "[[:alnum:]]+"))
 
 sitio_ellipsoid <- conglomerates_filtrado_id %>%
-  select(id, conglomerado_muestra_id, central_lat, transect2_lat, transect3_lat, transect4_lat) %>%
-  gather(sitio, lat, -id, -conglomerado_muestra_id) %>%
+  select(id, conglomerado_muestra_id, central_ellipsoid, transect2_ellipsoid, transect3_ellipsoid, transect4_ellipsoid) %>%
+  gather(sitio, ellipsoid, -id, -conglomerado_muestra_id) %>%
   mutate(sitio = str_extract(sitio, "[[:alnum:]]+"))
 
 sitio_gps_error <- conglomerates_filtrado_id %>%

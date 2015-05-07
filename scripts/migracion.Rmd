@@ -35,9 +35,9 @@ numérica del nombre de la base de datos y la columna id de la misma.
 bases_rutas <- list.files(path = "../datos/bases_entrada", full.names = TRUE)
 names(bases_rutas) <- extract_numeric(basename(bases_rutas))
 
-conglomerado <- ldply(bases_rutas, leerDbTab, "conglomerates")
+conglomerado_tabs <- ldply(bases_rutas, leerDbTab, "conglomerates")
 
-conglomerado <- conglomerado %>%
+conglomerado <- conglomerado_tabs %>%
   filter(nchar(name) <= 5) %>%  # quitamos conglomerados con nombres mal
   mutate(
     id = as.numeric(paste(id, .id, sep = "")) # creamos nueva columna id
@@ -47,7 +47,21 @@ conglomerado <- conglomerado %>%
 
 2. Separamos en las dos tablas Conglomerado\_muestra y Sitio\_muestra
 
+**Falta buscar niveles de variables conglomerate_type de cliente Thilo**
+
 ```{r}
+Conglomerado_muestra <- conglomerado %>% 
+  mutate(
+    nombre = name, 
+    fecha_visita = visit_date, 
+    compania = NA,
+    monitoreo_tipo = "SAC-MOD", 
+    tipo = revalue(conglomerate_type, c("07) Biodiversidad" = "7 Biodiversidad")),
+    estado = state,
+    tenencia = revalue(property, c("01) Ejidal" = "1 Ejidal", 
+      "03) Propriedad Particular" = "3 Propiedad particular"))
+  select(nombre = name, fecha_visita = visit_date, )
+
 separarSitios <- function(base_df, variable){
   base_var <- base_df  %>%
     select(id, contains(variable)) %>%
