@@ -40,14 +40,14 @@ conglomerado_tabs <- ldply(bases_rutas, leerDbTab, "conglomerates")
 conglomerado <- conglomerado_tabs %>%
   filter(nchar(name) <= 5) %>%  # quitamos conglomerados con nombres mal
   mutate(
-    id = as.numeric(paste(id, .id, sep = "")) # creamos nueva columna id
+    id = as.numeric(paste(.id, id, sep = "")) # creamos nueva columna id
     ) %>%
   select(-.id) # eliminamos la columna auxiliar .id
 ```
 
 2. Separamos en las dos tablas Conglomerado\_muestra y Sitio\_muestra
 
-**Falta buscar niveles de variables conglomerate_type de cliente Thilo**
+**Falta buscar niveles conglomerate_type y property de cliente Thilo**
 
 ```{r}
 Conglomerado_muestra <- conglomerado %>% 
@@ -103,15 +103,78 @@ Sitio_muestra <- sitio %>%
   select(-lat, -lon, -altitude, -sitio)
 ```
 
-3. Leemos las tablas de sitios.
+### invaders -> Especie_invasora
+
+Filtramos para únicamente tener registros asociados a los conglomerados en la 
+tabla Conglomerado_muestra.
 
 ```{r}
-sitio <- ldply(bases_rutas, leerDbTab, "conglomerates")
+invasora_tabs <- ldply(bases_rutas, leerDbTab, "invaders")
+archivos_invasora_tabs <- ldply(bases_rutas, leerDbTab, "files_invasores")
 
-conglomerado <- conglomerado %>%
-  filter(nchar(name) <= 5) %>%  # quitamos conglomerados con nombres mal
+# creamos nuevos ids pegando id base de datos con ids de tabla
+invasora <- invasora_tabs %>%
   mutate(
-    id = as.numeric(paste(id, .id, sep = "")) # creamos nueva columna id
-    ) %>%
-  select(-.id) # eliminamos la columna auxiliar .id
+    id = as.numeric(paste(.id, id, sep = "")),
+    conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = ""))
+  ) %>%
+  filter(conglomerate_id %in% Conglomerado_muestra$id) %>%
+  select(-.id) 
+
+archivos_invasora <- archivos_invasora_tabs %>%
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    invaders_id = as.numeric(paste(.id, invaders_id, sep = ""))
+  ) %>%
+  filter(invaders_id %in% invasora$id) %>%
+  select(-.id) 
 ```
+
+Tablas a exportar
+**en archivo quitamos ruta?**
+**como trabajar las horas?**
+
+```{r}
+Archivo_especie_invasora <- archivos_invasora %>%
+  mutate(
+    archivo_nombre_original = filename,
+    archivo = filename, 
+  ) %>%
+  select(id, especie_invasora_id = invaders_id, archivo_nombre_original, 
+         archivo)
+
+Especie_invasora <- invasora %>%
+
+# Asignamos como id del transecto el id de la primera especie invasora
+transecto_especies_invasoras <- invasora %>%
+  separate(transect, c("nombre", "transecto_numero"), sep = "/") %>%
+  group_by(conglomerate_id, transecto_numero) %>%
+  mutate(
+    transecto_especies_invasoras_id = first(id)
+  ) %>%
+  ungroup()
+
+Transecto_especies_invasoras_muestra <- transecto_especies_invasoras %>%
+  group_by(conglomerate_id, transecto_numero) %>%
+  summarise_each(funs(first)) %>%
+  mutate(
+    transecto_numero = revalue(transecto_numero, 
+      c("T2" = "Transecto 2", "T3" = "Transecto 3", "T4" = "Transecto 4")),
+    tecnico = technician,
+    fecha = NA,
+    hora_inicio = start_time, 
+    hora_termino = stop_time, 
+    comentario = comment
+  ) %>%
+  select(id = transecto_especies_invasoras_id, 
+    conglomerado_muestra_id = conglomerate_id, fecha,
+    transecto_numero, tecnico, hora_inicio, hora_termino, comentario)
+
+Especie_invasora <- transecto_especies_invasoras %>%
+  mutate(
+    nombre_en_lista = NA, 
+    )
+  select(id, transecto_especies_invasoras_id, )
+    
+```
+
