@@ -103,7 +103,7 @@ Sitio_muestra <- sitio %>%
   select(-lat, -lon, -altitude, -sitio)
 ```
 
-### invaders -> Especie_invasora
+#### invaders, file_invasores -> Transecto_especie_invasora, Especie_invasora, Archivo_Especie_invasora
 
 Filtramos para únicamente tener registros asociados a los conglomerados en la 
 tabla Conglomerado_muestra.
@@ -136,14 +136,9 @@ Tablas a exportar
 
 ```{r}
 Archivo_especie_invasora <- archivos_invasora %>%
-  mutate(
-    archivo_nombre_original = filename,
-    archivo = filename, 
-  ) %>%
-  select(id, especie_invasora_id = invaders_id, archivo_nombre_original, 
-         archivo)
-
-Especie_invasora <- invasora %>%
+  select(id, especie_invasora_id = invaders_id, 
+    archivo_nombre_original = old_filename, 
+    archivo = filename)
 
 # Asignamos como id del transecto el id de la primera especie invasora
 transecto_especies_invasoras <- invasora %>%
@@ -157,6 +152,7 @@ transecto_especies_invasoras <- invasora %>%
 Transecto_especies_invasoras_muestra <- transecto_especies_invasoras %>%
   group_by(conglomerate_id, transecto_numero) %>%
   summarise_each(funs(first)) %>%
+  ungroup() %>%
   mutate(
     transecto_numero = revalue(transecto_numero, 
       c("T2" = "Transecto 2", "T3" = "Transecto 3", "T4" = "Transecto 4")),
@@ -170,14 +166,22 @@ Transecto_especies_invasoras_muestra <- transecto_especies_invasoras %>%
     conglomerado_muestra_id = conglomerate_id, fecha,
     transecto_numero, tecnico, hora_inicio, hora_termino, comentario)
 
+
+transecto_especies_invasoras$numero_individuos = cut(
+  transecto_especies_invasoras$number_individuals, 
+  breaks = c(-Inf, 0, 5, 10, 90, Inf))
+levels(transecto_especies_invasoras$numero_individuos) <- list(
+  "No aplica" = c("(-Inf,0]", "(90, Inf]"), 
+  "1 a 5" = "(0,5]", 
+  "6 a 10" = "(5,10]", 
+  "más de 10" = "(10,90]")
+
 Especie_invasora <- transecto_especies_invasoras %>%
   mutate(
     nombre_en_lista = !is.na(conabio_list_name),
-    numero_individuos = as.character(cut(number_individuals, 
-      breaks = c(-Inf, 0, 5, 10, 90, 99), 
-      labels = c("No aplica", "1 a 5", "6 a 10", "más de 10", "No aplica"))),
     nombre_comun = ifelse(name_type == "common name", species_name, NA), 
-    nombre_cientifico = ifelse(name_type != "common name", species_name, NA)
+    nombre_cientifico = ifelse(name_type != "common name", species_name, NA),
+    numero_individuos = as.character(numero_individuos)
   ) %>%
   select(id, transecto_especies_invasoras_id, nombre_en_lista, nombre_comun, 
     nombre_cientifico, numero_individuos)
