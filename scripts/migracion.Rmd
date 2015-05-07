@@ -63,5 +63,36 @@ names(variables) <- variables
 sitio <- ldply(variables, separarSitios, base_df = conglomerado) %>%
   spread(.id, value)
 
+Sitio_muestra <- sitio %>%
+  mutate(
+    conglomerado_muestra_id = id, 
+    id = 1:length(id),
+    sitio_numero = revalue(sitio, c("central" = "Centro", "transect2" = "Sitio 2",
+      "transect3" = "Sitio 3", "transect4" = "Sitio 4")), 
+    existe = TRUE,
+    lat = as.numeric(lat),
+    lon = as.numeric(lon),
+    lat_grado = floor(lat), 
+    lat_min = floor(60 * (lat - lat_grado)),
+    lat_seg = (3600 * (lat - lat_grado - lat_min / 60)),
+    lon_grado = floor(lon), 
+    lon_min = floor(60 * (lon - lon_grado)),
+    lon_seg = (3600 * (lon - lon_grado - lon_min / 60)),
+    altitud = altitude,
+    hay_evidencia = NA
+    ) %>% 
+  select(-lat, -lon, -altitude, -sitio)
 ```
 
+3. Leemos las tablas de sitios.
+
+```{r}
+sitio <- ldply(bases_rutas, leerDbTab, "conglomerates")
+
+conglomerado <- conglomerado %>%
+  filter(nchar(name) <= 5) %>%  # quitamos conglomerados con nombres mal
+  mutate(
+    id = as.numeric(paste(id, .id, sep = "")) # creamos nueva columna id
+    ) %>%
+  select(-.id) # eliminamos la columna auxiliar .id
+```
