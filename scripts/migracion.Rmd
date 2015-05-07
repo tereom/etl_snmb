@@ -118,7 +118,7 @@ invasora <- invasora_tabs %>%
     id = as.numeric(paste(.id, id, sep = "")),
     conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = ""))
   ) %>%
-  filter(conglomerate_id %in% Conglomerado_muestra$id) %>%
+  filter(conglomerate_id %in% Conglomerado_muestra$id & number_individuals > 0) %>%
   select(-.id) 
 
 archivos_invasora <- archivos_invasora_tabs %>%
@@ -166,25 +166,109 @@ Transecto_especies_invasoras_muestra <- transecto_especies_invasoras %>%
     conglomerado_muestra_id = conglomerate_id, fecha,
     transecto_numero, tecnico, hora_inicio, hora_termino, comentario)
 
-
-transecto_especies_invasoras$numero_individuos = cut(
-  transecto_especies_invasoras$number_individuals, 
-  breaks = c(-Inf, 0, 5, 10, 90, Inf))
-levels(transecto_especies_invasoras$numero_individuos) <- list(
-  "No aplica" = c("(-Inf,0]", "(90, Inf]"), 
-  "1 a 5" = "(0,5]", 
-  "6 a 10" = "(5,10]", 
-  "más de 10" = "(10,90]")
+# esto se puede simplificar considerando que no hay especies con cero individuos
+# debido a que filtramos estos registros
+# transecto_especies_invasoras$numero_individuos = cut(
+#   transecto_especies_invasoras$number_individuals, 
+#   breaks = c(-Inf, 0, 5, 10, 90, Inf))
+# levels(transecto_especies_invasoras$numero_individuos) <- list(
+#   "No aplica" = c("(-Inf,0]", "(90, Inf]"), 
+#   "1 a 5" = "(0,5]", 
+#   "6 a 10" = "(5,10]", 
+#   "más de 10" = "(10,90]")
 
 Especie_invasora <- transecto_especies_invasoras %>%
   mutate(
     nombre_en_lista = !is.na(conabio_list_name),
     nombre_comun = ifelse(name_type == "common name", species_name, NA), 
     nombre_cientifico = ifelse(name_type != "common name", species_name, NA),
-    numero_individuos = as.character(numero_individuos)
+    numero_individuos = as.character(cut(number_individuals, 
+      breaks = c(0, 5, 10, 90, 99), 
+      labels = c("1 a 5", "6 a 10", "más de 10", "No aplica")))
   ) %>%
   select(id, transecto_especies_invasoras_id, nombre_en_lista, nombre_comun, 
-    nombre_cientifico, numero_individuos)
-    
+    nombre_cientifico, numero_individuos)  
 ```
 
+#### tracks_excrements, file_tracks_excrements -> Transecto_huellas_excretas, Huella_excreta, Archivo_huella_excreta
+
+```{r}
+huella_tabs <- ldply(bases_rutas, leerDbTab, "tracks_excrements")
+archivos_huella_tabs <- ldply(bases_rutas, leerDbTab, "files_tracks_excrements")
+
+# obtenemos la hora inicio y hora término de la tabla invaders
+invasora_horas <- select(invasora_tabs, transect, start_time, stop_time) %>%
+  unique()
+
+# creamos nuevos ids pegando id base de datos con ids de tabla
+huella_excreta <- huella_tabs %>%
+  left_join(invasora_horas, by = "transect") %>%
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = ""))
+  ) %>%
+  filter(conglomerate_id %in% Conglomerado_muestra$id) %>%
+  select(-.id) 
+
+archivos_huella_excreta <- archivos_huella_tabs %>%
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    tracks_excrements_id = as.numeric(paste(.id, tracks_exrements_id, sep = ""))
+  ) %>%
+  filter(tracks_excrements_id %in% huella_excreta$id) %>%
+  select(-.id) 
+```
+
+Tablas a exportar
+**en archivo quitamos ruta?**
+**como trabajar las horas?**
+
+```{r}
+Archivo_huella_excreta <- archivos_huella_excreta %>%
+  select(id, huella_excreta_id = tracks_excrements_id, 
+    archivo_nombre_original = old_filename, 
+    archivo = filename)
+
+# Asignamos como id del transecto el id de la primera huella/excreta
+transecto_huellas_excretas <- huella_excreta %>%
+  
+  separate(transect, c("nombre", "transecto_numero"), sep = "/") %>%
+  group_by(conglomerate_id, transecto_numero) %>%
+  mutate(
+    transecto_huella_excreta_id = first(id)
+  ) %>%
+  ungroup()
+
+
+Transecto_huellas_excretas_muestra <- transecto_transecto_huellas_excretas %>%
+  group_by(conglomerate_id, transecto_numero) %>%
+  summarise_each(funs(first)) %>%
+  ungroup() %>%
+  mutate(
+    transecto_numero = revalue(transecto_numero, 
+      c("T2" = "Transecto 2", "T3" = "Transecto 3", "T4" = "Transecto 4")),
+    tecnico = technician,
+    fecha = NA,
+    hora_inicio = start_time, 
+    hora_termino = stop_time, 
+    comentario = comment
+  ) %>%
+  select(id = transecto_huella_excreta_id, 
+    conglomerado_muestra_id = conglomerate_id, fecha,
+    transecto_numero, tecnico, hora_inicio, hora_termino, comentario)
+
+
+Especie_invasora <- transecto_transecto_huellas_excretas %>%
+  
+  
+  mutate(
+    nombre_en_lista = !is.na(conabio_list_name),
+    nombre_comun = ifelse(name_type == "common name", species_name, NA), 
+    nombre_cientifico = ifelse(name_type != "common name", species_name, NA),
+    numero_individuos = as.character(cut(number_individuals, 
+      breaks = c(0, 5, 10, 90, 99), 
+      labels = c("1 a 5", "6 a 10", "más de 10", "No aplica")))
+  ) %>%
+  select(id, transecto_especies_invasoras_id, nombre_en_lista, nombre_comun, 
+    nombre_cientifico, numero_individuos)  
+```
