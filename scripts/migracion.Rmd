@@ -257,6 +257,7 @@ archivos_huella_excreta <- archivos_huella_tabs %>%
 Tablas a exportar
 **en archivo quitamos ruta?**
 **como trabajar las horas?**
+**species_name en nombre comun o en nombre cientifico?**
 
 ```{r}
 Archivo_huella_excreta <- archivos_huella_excreta %>%
@@ -265,17 +266,16 @@ Archivo_huella_excreta <- archivos_huella_excreta %>%
     archivo = filename)
 
 # Asignamos como id del transecto el id de la primera huella/excreta
-transecto_huellas_excretas <- huella_excreta %>%
-  
+transecto_huellas_excretas <- huella_excreta %>%  
   separate(transect, c("nombre", "transecto_numero"), sep = "/") %>%
   group_by(conglomerate_id, transecto_numero) %>%
   mutate(
-    transecto_huella_excreta_id = first(id)
+    transecto_huellas_excretas_id = first(id)
   ) %>%
   ungroup()
 
 
-Transecto_huellas_excretas_muestra <- transecto_transecto_huellas_excretas %>%
+Transecto_huellas_excretas_muestra <- transecto_huellas_excretas %>%
   group_by(conglomerate_id, transecto_numero) %>%
   summarise_each(funs(first)) %>%
   ungroup() %>%
@@ -288,24 +288,20 @@ Transecto_huellas_excretas_muestra <- transecto_transecto_huellas_excretas %>%
     hora_termino = stop_time, 
     comentario = comment
   ) %>%
-  select(id = transecto_huella_excreta_id, 
+  select(id = transecto_huellas_excretas_id, 
     conglomerado_muestra_id = conglomerate_id, fecha,
     transecto_numero, tecnico, hora_inicio, hora_termino, comentario)
 
-
 Huella_excreta <- transecto_huellas_excretas %>%
-  
-  
   mutate(
-    nombre_en_lista = !is.na(conabio_list_name),
-    nombre_comun = ifelse(name_type == "common name", species_name, NA), 
-    nombre_cientifico = ifelse(name_type != "common name", species_name, NA),
-    numero_individuos = as.character(cut(number_individuals, 
-      breaks = c(0, 5, 10, 90, 99), 
-      labels = c("1 a 5", "6 a 10", "más de 10", "No aplica")))
+    es_huella = observation_type == "tracks",
+    largo = length,
+    ancho = width,
+    nombre_comun = species_name, 
+    nombre_cientifico = species_name
   ) %>%
-  select(id, transecto_especies_invasoras_id, nombre_en_lista, nombre_comun, 
-    nombre_cientifico, numero_individuos)  
+  select(id, transecto_huellas_excretas_id, es_huella, nombre_comun, 
+    nombre_cientifico, largo, ancho)  
 
 ```
 
