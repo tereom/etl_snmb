@@ -41,7 +41,7 @@ conglomerado <- conglomerates %>%
   filter(nchar(name) <= 5) %>%  # quitamos conglomerados con nombres mal
   mutate(
     id = as.numeric(paste(.id, id, sep = "")) # creamos nueva columna id
-    ) %>%
+  ) %>%
   select(-.id) # eliminamos la columna auxiliar .id
 ```
 
@@ -209,7 +209,8 @@ huella_excreta <- huella_tabs %>%
     id = as.numeric(paste(.id, id, sep = "")),
     conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = ""))
   ) %>%
-  filter(conglomerate_id %in% Conglomerado_muestra$id) %>%
+  filter((conglomerate_id %in% Conglomerado_muestra$id) & 
+      (length > 0 | width > 0)) %>%
   select(-.id) 
 
 archivos_huella_excreta <- archivos_huella_tabs %>%
@@ -241,7 +242,6 @@ transecto_huellas_excretas <- huella_excreta %>%
   ) %>%
   ungroup()
 
-
 Transecto_huellas_excretas_muestra <- transecto_huellas_excretas %>%
   group_by(conglomerate_id, transecto_numero) %>%
   summarise_each(funs(first)) %>%
@@ -259,7 +259,6 @@ Transecto_huellas_excretas_muestra <- transecto_huellas_excretas %>%
     conglomerado_muestra_id = conglomerate_id, fecha,
     transecto_numero, tecnico, hora_inicio, hora_termino, comentario)
 
-
 Huella_excreta <- transecto_huellas_excretas %>%  
   mutate(
     es_huella = observation_type == "tracks",
@@ -270,7 +269,6 @@ Huella_excreta <- transecto_huellas_excretas %>%
   ) %>%
   select(id, transecto_huellas_excretas_id, es_huella, nombre_comun, 
     nombre_cientifico, largo, ancho)  
-
 ```
 
 ```{r´}
@@ -283,3 +281,112 @@ dbDisconnect(base_output)
 dbWriteTable(base_output, "Sitio_muestra", Sitio_muestra,
       overwrite = FALSE, append = TRUE)
 ```
+
+
+### Cámara
+
+```{r}
+camara_tabs <- ldply(bases_rutas, leerDbTab, "trap_camera")
+archivos_camara_tabs <- ldply(bases_rutas, leerDbTab, "files_trap_camera")
+archivos_camara_ref_tabs <- ldply(bases_rutas, leerDbTab, "files_camera_ref")
+equipo_tabs <- ldply(bases_rutas, leerDbTab, "equip_camera")
+
+# creamos nuevos ids pegando id base de datos con ids de tabla y filtramos
+equipo <- equipo_tabs %>% 
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = ""))
+  ) %>%
+  filter(conglomerate_id %in% Conglomerado_muestra$id) %>%
+  select(-.id)
+
+camara <- camara_tabs %>%
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = "")),
+    camera_id = as.numeric(paste(.id, camera_id, sep = ""))
+  ) %>%
+  filter((conglomerate_id %in% Conglomerado_muestra$id) 
+    # Hay muchos casos donde equip_camera tiene vacíos y trap_camera no
+    # & (camera_id %in% equipo$id)) %>%
+  select(-.id)
+
+archivos_camara <- archivos_camara_tabs %>% 
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    trap_camera_id = as.numeric(paste(.id, trap_camera_id, sep = ""))
+  ) %>%
+  filter(trap_camera_id %in% camara$id) %>%
+  select(-.id)
+
+archivos_camara_ref <- archivos_camara_ref_tabs %>% 
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    equipment_id = as.numeric(paste(.id, equipment_id, sep = ""))
+  ) %>%
+  filter(equipment_id %in% equipo$id) %>%
+  select(-.id)
+```
+
+Camara = trap\_camara + equip\_camara
+
+1. Hacemos el join de tal manera que preservamos todas los renglones de camara 
+(trap\_camara).
+
+2. Unimos con los ids de sitios usando la variable conglomerate_id.
+```{r}
+sitios_cgls <- select(Sitio_muestra, sitio_muestra_id = id, 
+  conglomerate_id = conglomerado_muestra_id, sitio_numero) %>%
+  mutate(
+    sitio_numero = revalue(sitio_numero, c("Centro" = 1, "Sitio 2" = 2,
+      "Sitio 3" = 3, "Sitio 4" = 4))
+  )
+    
+Camara_sitio <- left_join(camara, equipo, by = c("conglomerate_id")) %>%     
+  mutate(
+    sitio_numero = substr(location, start = nchar(location), 
+      stop = nchar(location))
+  ) %>%
+  left_join(sitios_cgls, by = c("conglomerate_id", "sitio_numero"))
+
+Camara <- Camara_sitio %>%
+  mutate(
+    fecha_inicio = start_time,  ### regex (variable de trap_camera)
+    hora_inicio = start_time,  ### regex
+    fecha_termino = stop_time, ### regex
+    hora_termino = stop_time, ## regex
+    lat = as.numeric(loc_camera_lat),
+    lon = as.numeric(loc_camera_lon),
+    lat_grado = as.integer(lat), 
+    lat_min = floor(60 * abs(lat - lat_grado)),
+    lat_seg = (3600 * abs(lat - lat_grado - sign(lat) * lat_min / 60)),
+    lon_grado = as.integer(lon), 
+    lon_min = floor(60 * abs(lon - lon_grado)),
+    lon_seg = (3600 * abs(lon - lon_grado - sign(lon) * lon_min / 60)),
+    azimut = NA, 
+    condiciones_abientales = NA, 
+    resolucion = resolution,  ### revisar y empatar niveles
+    sensibilidad = revalue(sensitivity, c("" = "Normal", "Alta" = "High",
+      "" = "Low")),
+    comentario = paste("Comentario trap_camera:", comment.x, 
+      "Comentario equip_camera", comment.y)
+    )
+  select(id = id.x, #nos quedamos con id de la tabla trap_camara
+    sitio_muestra_id, 
+    nombre = camera, 
+    fecha_inicio, hora_inicio,
+    fecha_termino, hora_termino,
+    lat_grado, lat_min, lat_seg,
+    lon_grado, lon_min, lon_seg,
+    elipsoide = loc_camera_ellipsoid, 
+    gps_error = loc_camera_gps_error,
+    altitud = loc_camera_altitude,
+    distancia_centro = distance, 
+    azimut, condiciones_ambientales
+
+
+    )
+  
+  
+```
+
