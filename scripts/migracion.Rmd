@@ -5,11 +5,12 @@ output: html_document
 
 
 ```{r, message=FALSE}
-library(RSQLite)
 library(plyr)
-library(dplyr)
 library(tidyr)
 library(stringr)
+library(RSQLite)
+library(dplyr)
+
 ```
 
 
@@ -54,7 +55,6 @@ conglomerado <- conglomerado_tabs %>%
 ```{r}
 # Importando el catálogo de municipio, ya que algunos registros contienen el muni-
 # cipio numéricamente
-
 cat_municipio <- unique(read.csv("../datos/adicionales/municipios.csv", 
   colClasses = "character", header = TRUE))
 
@@ -62,7 +62,7 @@ cat_municipio <- cat_municipio %>%
   mutate(CVE_ENT_MUN = paste(CVE_ENT, CVE_MUN, sep=""))
 
 Conglomerado_muestra <- conglomerado %>%
-  # Las operaciones entre el group_by() y el ungroup se hacen a nivel de id. (renglón)
+  # Las operaciones entre el group_by() y el ungroup se hacen a nivel de id.
   # El default en dplyr es por columnas
   group_by(id) %>%
   mutate(
@@ -136,6 +136,8 @@ Sitio_muestra <- sitio %>%
   select(id, conglomerado_muestra_id, sitio_numero, existe, lat_grado, lat_min,
     lat_seg, lon_grado, lon_min, lon_seg, altitud, gps_error, elipsoide,
     hay_evidencia)  
+
+rm("cat_municipio", "conglomerado", "conglomerado_tabs", "sitio")
 ```
 
 #### invaders, file_invasores -> Transecto_especie_invasora, Especie_invasora, Archivo_Especie_invasora
@@ -304,17 +306,6 @@ Huella_excreta <- transecto_huellas_excretas %>%
     nombre_cientifico, largo, ancho)  
 ```
 
-```{r´}
-base_output <- dbConnect(RSQLite::SQLite(), "../datos/base_salida/base_output.db")
-dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra),
-      overwrite = FALSE, append = TRUE)
-#dbCommit(base_output)
-dbDisconnect(base_output)
-dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra),
-      overwrite = FALSE, append = TRUE)
-```
-
-
 ### Cámara
 
 ```{r}
@@ -338,8 +329,9 @@ camara <- camara_tabs %>%
     conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = "")),
     camera_id = as.numeric(paste(.id, camera_id, sep = ""))
   ) %>%
-  filter((conglomerate_id %in% Conglomerado_muestra$id) 
+  filter((conglomerate_id %in% Conglomerado_muestra$id))  %>%
     # Hay muchos casos donde equip_camera tiene vacíos y trap_camera no
+    # por lo que favorecemos la tabla equip_camera
     # & (camera_id %in% equipo$id)) %>%
   select(-.id)
 
@@ -366,6 +358,7 @@ Camara = trap\_camara + equip\_camara
 (trap\_camara).
 
 2. Unimos con los ids de sitios usando la variable conglomerate_id.
+
 ```{r}
 sitios_cgls <- select(Sitio_muestra, sitio_muestra_id = id, 
   conglomerate_id = conglomerado_muestra_id, sitio_numero) %>%
@@ -373,15 +366,21 @@ sitios_cgls <- select(Sitio_muestra, sitio_muestra_id = id,
     sitio_numero = revalue(sitio_numero, c("Centro" = 1, "Sitio 2" = 2,
       "Sitio 3" = 3, "Sitio 4" = 4))
   )
-    
-Camara_sitio <- left_join(camara, equipo, by = c("conglomerate_id")) %>%     
+
+# unir tablas equip_camera con trap_camera
+# primero sacamos una sub-base de trap_camera con un único registro por 
+# conglomerado-sitio, después unimos con sitios_cgls para obetebr sitio_muesrea_id
+camara_sitio <- camara %>%
+  group_by(location) %>%
+  summarise_each(funs(first)) %>%
+  left_join(equipo, by = c("conglomerate_id")) %>%     
   mutate(
     sitio_numero = substr(location, start = nchar(location), 
       stop = nchar(location))
   ) %>%
   left_join(sitios_cgls, by = c("conglomerate_id", "sitio_numero"))
 
-Camara <- Camara_sitio %>%
+Camara <- camara_sitio %>%
   mutate(
     fecha_inicio = start_time,  ### regex (variable de trap_camera)
     hora_inicio = start_time,  ### regex
@@ -396,14 +395,14 @@ Camara <- Camara_sitio %>%
     lon_min = floor(60 * abs(lon - lon_grado)),
     lon_seg = (3600 * abs(lon - lon_grado - sign(lon) * lon_min / 60)),
     azimut = NA, 
-    condiciones_abientales = NA, 
+    condiciones_ambientales = NA, 
     resolucion = resolution,  ### revisar y empatar niveles
-    sensibilidad = revalue(sensitivity, c("" = "Normal", "Alta" = "High",
-      "" = "Low")),
+    sensibilidad = revalue(sensitivity, c("Normal" = "Normal", "Alta" = "High",
+      "Baja" = "Low")), ### revisar y empatar niveles
     comentario = paste("Comentario trap_camera:", comment.x, 
       "Comentario equip_camera", comment.y)
-    )
-  select(id = id.x, #nos quedamos con id de la tabla trap_camara
+    ) %>%
+  select(id = id.x, #nos quedamos con id de la tabla trap_camera
     sitio_muestra_id, 
     nombre = camera, 
     fecha_inicio, hora_inicio,
@@ -414,11 +413,56 @@ Camara <- Camara_sitio %>%
     gps_error = loc_camera_gps_error,
     altitud = loc_camera_altitude,
     distancia_centro = distance, 
-    azimut, condiciones_ambientales
-
-
+    azimut, condiciones_ambientales,
+    resolucion, sensibilidad,
+    comentario
     )
-  
-  
+
+# seleccionamos los campos de la tabla trap_camera que formarán parte de
+# la tabla Archivo_camara
+trap_camera_sub <- select(camara, trap_camera_id = id, number_individuals, 
+  species_name, type_first_image, type_image, type_video)
+
+archivos_camara_2 <-  left_join(archivos_camara, trap_camera_sub, 
+  by ="trap_camera_id")
+
+Archivo_camara <- archivos_camara_2 %>%
+  mutate(
+    presencia = (number_individuals > 0),
+    numero_individuos = ifelse(presencia, number_individuals, NA)
+  ) %>%
+  select(id, 
+    camara_id = trap_camera_id, 
+    archivo = filename, # regex
+    archivo_nombre_original = old_filename, # regex
+    presencia, 
+    nombre_comun = species_name,  # como decidir?
+    nombre_cientifico = species_name, 
+    numero_individuos
+    )
+
+# unimos con camera_sitio y equip_camera
+camara_equipo <- camara_sitio %>%
+  select(
+    equipment_id = id.y, 
+    camara_id = id.x
+  ) %>%
+  filter()
+
+Imagen_referencia_camara <- archivos_camara_ref %>%
+  left_join(camara_equipo, by = "equipment_id") %>% 
+  select(id, camara_id, 
+    archivo = filename, 
+    archivo_nombre_original = old_filename)
 ```
 
+
+```{r}
+base_output <- dbConnect(RSQLite::SQLite(), "../datos/base_salida/base_output.db")
+dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra),
+      overwrite = FALSE, append = TRUE)
+#dbCommit(base_output)
+dbDisconnect(base_output)
+dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra),
+      overwrite = FALSE, append = TRUE)
+```
