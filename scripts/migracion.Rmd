@@ -35,9 +35,11 @@ numérica del nombre de la base de datos y la columna id de la misma.
 bases_rutas <- list.files(path = "../datos/bases_entrada", full.names = TRUE)
 names(bases_rutas) <- extract_numeric(basename(bases_rutas))
 
-conglomerates <- ldply(bases_rutas, leerDbTab, "conglomerates")
+# ldply asigna automáticamente el nombre del elemento de la lista como primera
+# variable en el data-frame de salida
+conglomerado_tabs <- ldply(bases_rutas, leerDbTab, "conglomerates")
 
-conglomerado <- conglomerates %>%
+conglomerado <- conglomerado_tabs %>%
   filter(nchar(name) <= 5) %>%  # quitamos conglomerados con nombres mal
   mutate(
     id = as.numeric(paste(.id, id, sep = "")) # creamos nueva columna id
@@ -50,24 +52,46 @@ conglomerado <- conglomerates %>%
 **Falta buscar niveles conglomerate_type y property de cliente Thilo**
 
 ```{r}
-Conglomerado_muestra <- conglomerado %>% 
+# Importando el catálogo de municipio, ya que algunos registros contienen el muni-
+# cipio numéricamente
+
+cat_municipio <- unique(read.csv("../datos/adicionales/municipios.csv", 
+  colClasses = "character", header = TRUE))
+
+cat_municipio <- cat_municipio %>%
+  mutate(CVE_ENT_MUN = paste(CVE_ENT, CVE_MUN, sep=""))
+
+Conglomerado_muestra <- conglomerado %>%
+  # Las operaciones entre el group_by() y el ungroup se hacen a nivel de id. (renglón)
+  # El default en dplyr es por columnas
+  group_by(id) %>%
+  mutate(
+    municipio_temp = ifelse(municipio %in% cat_municipio$CVE_ENT_MUN,
+      cat_municipio$NOM_MUN[cat_municipio$CVE_ENT_MUN == municipio], municipio)
+    ) %>%
+  ungroup() %>%
   mutate(
     nombre = as.integer(name), 
     fecha_visita = visit_date, 
     compania = NA_character_,
     tipo = revalue(conglomerate_type, c("07) Biodiversidad" = "7 Biodiversidad")),
     estado = state,
+    municipio = municipio_temp,
     tenencia = revalue(property, c("01) Ejidal" = "1 Ejidal", 
-      "03) Propriedad Particular" = "3 Propiedad particular")), 
+      "03) Propriedad Particular" = "3 Propiedad particular")),
+    
     uso_suelo_tipo = NA_character_, 
     monitoreo_tipo = "SAC-MOD", 
     vegetacion_tipo = NA_character_, 
     perturbado = NA,
     comentario = comment) %>%
+  # los campos se deben seleccionar en el orden en el que serán insertados
   select(id, nombre, fecha_visita, predio, compania, tipo, estado, municipio,
     tenencia, uso_suelo_tipo, monitoreo_tipo, vegetacion_tipo, perturbado,
     comentario)
 
+# función para crear tablas de la forma: |id|sitio|valor|, para cada variable de
+# latitud, longitud, etc. El nombre de la variable se obtiene del ldply.
 separarSitios <- function(base_df, variable){
   base_var <- base_df  %>%
     select(id, contains(variable)) %>%
@@ -85,24 +109,33 @@ sitio <- ldply(variables, separarSitios, base_df = conglomerado) %>%
 
 Sitio_muestra <- sitio %>%
   mutate(
-    conglomerado_muestra_id = id, 
+    conglomerado_muestra_id = as.integer(id), 
     id = 1:length(id),
     sitio_numero = revalue(sitio, c("central" = "Centro", "transect2" = "Sitio 2",
-      "transect3" = "Sitio 3", "transect4" = "Sitio 4")), 
-    existe = TRUE,
+      "transect3" = "Sitio 3", "transect4" = "Sitio 4")),
+    # Web2py definió los campos boolean como char(1): T o F en la base de datos
+    existe = "T",
     lat = as.numeric(lat),
     lon = as.numeric(lon),
+    
+    # Nota: no se está revisando por errores al introducir las coordenadas (por
+    # ejemplo, si su GPS estaba en grados y dividieron la expansión decimal para
+    # llenar los campos correspondientes a minutos y segundos)
     lat_grado = as.integer(lat), 
     lat_min = floor(60 * abs(lat - lat_grado)),
     lat_seg = (3600 * abs(lat - lat_grado - sign(lat) * lat_min / 60)),
     lon_grado = as.integer(lon), 
     lon_min = floor(60 * abs(lon - lon_grado)),
     lon_seg = (3600 * abs(lon - lon_grado - sign(lon) * lon_min / 60)),
-    altitud = as.numeric(altitude),
+    
+    elipsoide = ellipsoid,
     gps_error = as.numeric(gps_error),
+    altitud = as.numeric(altitude),
     hay_evidencia = NA
-    ) %>% 
-  select(-lat, -lon, -altitude, -sitio)
+    ) %>%
+  select(id, conglomerado_muestra_id, sitio_numero, existe, lat_grado, lat_min,
+    lat_seg, lon_grado, lon_min, lon_seg, altitud, gps_error, elipsoide,
+    hay_evidencia)  
 ```
 
 #### invaders, file_invasores -> Transecto_especie_invasora, Especie_invasora, Archivo_Especie_invasora
@@ -259,7 +292,7 @@ Transecto_huellas_excretas_muestra <- transecto_huellas_excretas %>%
     conglomerado_muestra_id = conglomerate_id, fecha,
     transecto_numero, tecnico, hora_inicio, hora_termino, comentario)
 
-Huella_excreta <- transecto_huellas_excretas %>%  
+Huella_excreta <- transecto_huellas_excretas %>%
   mutate(
     es_huella = observation_type == "tracks",
     largo = length,
@@ -273,12 +306,11 @@ Huella_excreta <- transecto_huellas_excretas %>%
 
 ```{r´}
 base_output <- dbConnect(RSQLite::SQLite(), "../datos/base_salida/base_output.db")
-
-dbWriteTable(base_output, "Conglomerado_muestra", Conglomerado_muestra,
+dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra),
       overwrite = FALSE, append = TRUE)
-dbCommit(base_output)
+#dbCommit(base_output)
 dbDisconnect(base_output)
-dbWriteTable(base_output, "Sitio_muestra", Sitio_muestra,
+dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra),
       overwrite = FALSE, append = TRUE)
 ```
 
