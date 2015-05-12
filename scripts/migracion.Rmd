@@ -43,6 +43,8 @@ conglomerado <- conglomerado_tabs %>%
   filter(nchar(name) <= 5) %>%  # quitamos conglomerados con nombres mal
   mutate(
     id = as.numeric(paste(.id, id, sep = "")) # creamos nueva columna id
+    # Notar que al crear los id's de esta manera, eliminamos la necesidad de hacer
+    # joins para obtener las llaves foráneas, ya que las conocemos de antemano.
     ) %>%
   select(-.id) # eliminamos la columna auxiliar .id
 ```
@@ -77,9 +79,8 @@ Conglomerado_muestra <- conglomerado %>%
     tipo = revalue(conglomerate_type, c("07) Biodiversidad" = "7 Biodiversidad")),
     estado = state,
     municipio = municipio_temp,
-    tenencia = revalue(property, c("01) Ejidal" = "1 Ejidal", 
+    tenencia = revalue(property, c("01) Ejidal" = "1 Ejidal", "02) Comunal" = "2 Comunal",
       "03) Propriedad Particular" = "3 Propiedad particular")),
-    
     uso_suelo_tipo = NA_character_, 
     monitoreo_tipo = "SAC-MOD", 
     vegetacion_tipo = NA_character_, 
@@ -154,6 +155,12 @@ invasora <- invasora_tabs %>%
     conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = ""))
   ) %>%
   filter(conglomerate_id %in% Conglomerado_muestra$id & number_individuals > 0) %>%
+  # Se filtran los registros sin individuos, puesto que:
+  # 1. A veces si un transecto no tenía individuos, no lo introducían, pero a ve
+  # ces declaraban un invader "fantasma" y ponían en comentarios que no se habían
+  # encontrado individuos. Hay que estandarizar.
+  # 2. Los invaders "fantasma" pueden llenar de basura la tabla de especies inva-
+  # soras.
   select(-.id) 
 
 archivos_invasora <- archivos_invasora_tabs %>%
@@ -161,6 +168,8 @@ archivos_invasora <- archivos_invasora_tabs %>%
     id = as.numeric(paste(.id, id, sep = "")),
     invaders_id = as.numeric(paste(.id, invaders_id, sep = ""))
   ) %>%
+  # Como se filtró para obtener "invasora", debemos filtrar esta tabla también
+  # para mantener consistencia.
   filter(invaders_id %in% invasora$id) %>%
   select(-.id) 
 ```
@@ -171,9 +180,13 @@ Tablas a exportar
 
 ```{r}
 Archivo_especie_invasora <- archivos_invasora %>%
-  select(id, especie_invasora_id = invaders_id, 
-    archivo_nombre_original = old_filename, 
-    archivo = filename)
+  mutate(
+    especie_invasora_id = invaders_id,
+    archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    # Word matchea letras, números y guiones bajos.
+    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+"))
+    ) %>%
+  select(id, especie_invasora_id, archivo_nombre_original, archivo)
 
 # Asignamos como id del transecto el id de la primera especie invasora
 transecto_especies_invasoras <- invasora %>%
@@ -184,17 +197,23 @@ transecto_especies_invasoras <- invasora %>%
   ) %>%
   ungroup()
 
+# Obtenemos la fecha de la tabla Conglomerado_muestra
+conglomerado_fechas <- select(Conglomerado_muestra, id, fecha_visita)
+
 Transecto_especies_invasoras_muestra <- transecto_especies_invasoras %>%
+  # Unimos por conglomerate_id para obtener la fecha
+  left_join(conglomerado_fechas, by = c("conglomerate_id" = "id")) %>%
   group_by(conglomerate_id, transecto_numero) %>%
+  # En el summarise es donde se cambia el tamaño de la tabla, agrupando valores
   summarise_each(funs(first)) %>%
   ungroup() %>%
   mutate(
     transecto_numero = revalue(transecto_numero, 
       c("T2" = "Transecto 2", "T3" = "Transecto 3", "T4" = "Transecto 4")),
+    fecha = fecha_visita,
+    hora_inicio = str_extract(start_time, regex("[0-9]{2}:[0-9]{2}:[0-9]{2}")), 
+    hora_termino = str_extract(stop_time, regex("[0-9]{2}:[0-9]{2}:[0-9]{2}")), 
     tecnico = technician,
-    fecha = NA,
-    hora_inicio = start_time, 
-    hora_termino = stop_time, 
     comentario = comment
   ) %>%
   select(id = transecto_especies_invasoras_id, 
@@ -214,7 +233,7 @@ Transecto_especies_invasoras_muestra <- transecto_especies_invasoras %>%
 
 Especie_invasora <- transecto_especies_invasoras %>%
   mutate(
-    nombre_en_lista = !is.na(conabio_list_name),
+    nombre_en_lista = ifelse(is.na(conabio_list_name),"F","T"),
     nombre_comun = ifelse(name_type == "common name", species_name, NA), 
     nombre_cientifico = ifelse(name_type != "common name", species_name, NA),
     numero_individuos = as.character(cut(number_individuals, 
@@ -233,7 +252,9 @@ archivos_huella_tabs <- ldply(bases_rutas, leerDbTab, "files_tracks_excrements")
 
 # obtenemos la hora inicio y hora término de la tabla invaders
 invasora_horas <- select(invasora_tabs, transect, start_time, stop_time) %>%
-  unique()
+  group_by(transect) %>%
+  summarise_each(funs(first)) %>%
+  ungroup()
 
 # creamos nuevos ids pegando id base de datos con ids de tabla
 huella_excreta <- huella_tabs %>%
@@ -261,9 +282,13 @@ Tablas a exportar
 
 ```{r}
 Archivo_huella_excreta <- archivos_huella_excreta %>%
-  select(id, huella_excreta_id = tracks_excrements_id, 
-    archivo_nombre_original = old_filename, 
-    archivo = filename)
+  mutate(
+    huella_excreta_id = tracks_excrements_id,
+    archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    # Word matchea letras, números y guiones bajos.
+    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+"))
+    ) %>%
+  select(id, huella_excreta_id, archivo_nombre_original, archivo)
 
 # Asignamos como id del transecto el id de la primera huella/excreta
 transecto_huellas_excretas <- huella_excreta %>%  
