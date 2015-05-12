@@ -402,7 +402,7 @@ Camara <- camara_sitio %>%
     lon_seg = (3600 * abs(lon - lon_grado - sign(lon) * lon_min / 60)),
     azimut = NA, 
     condiciones_ambientales = NA, 
-    resolucion = resolution,  ### revisar y empatar niveles
+    resolucion = resolution,  ### ingresada sin menú regex?
     sensibilidad = revalue(sensitivity, c("Normal" = "Normal", "Alta" = "High",
       "Baja" = "Low")), ### revisar y empatar niveles
     comentario = paste("Comentario trap_camera:", comment.x, 
