@@ -3,6 +3,8 @@ title: "Migracion de primera versión"
 output: html_document
 ---
 
+Cargamos los paquetes, RSQLite nos sirve para escribir las tablas en una base
+de datos Sqlite.
 
 ```{r, message=FALSE}
 library(plyr)
@@ -10,7 +12,6 @@ library(tidyr)
 library(stringr)
 library(RSQLite)
 library(dplyr)
-
 ```
 
 
@@ -24,7 +25,6 @@ leerDbTab <- function(dir, tabla){
   tabla_df <- collect(tabla)
 }
 ```
-
 
 ### conglomerates -> Conglomerado_muestra y Sitio_muestra
 
@@ -370,10 +370,16 @@ sitios_cgls <- select(Sitio_muestra, sitio_muestra_id = id,
 # unir tablas equip_camera con trap_camera
 # primero sacamos una sub-base de trap_camera con un único registro por 
 # conglomerado-sitio, después unimos con sitios_cgls para obetebr sitio_muesrea_id
-camara_sitio <- camara %>%
+camara_aux <- camara %>%
   group_by(location) %>%
-  summarise_each(funs(first)) %>%
-  left_join(equipo, by = c("conglomerate_id")) %>%     
+  summarise_each(funs(first))
+
+equipo_aux <- equipo %>%
+  group_by(conglomerate_id) %>%
+  summarise_each(funs(first))
+
+camara_sitio <- camara_aux %>%
+  left_join(equipo_aux, by = c("conglomerate_id")) %>%     
   mutate(
     sitio_numero = substr(location, start = nchar(location), 
       stop = nchar(location))
@@ -446,23 +452,158 @@ camara_equipo <- camara_sitio %>%
   select(
     equipment_id = id.y, 
     camara_id = id.x
-  ) %>%
-  filter()
+  )
 
 Imagen_referencia_camara <- archivos_camara_ref %>%
   left_join(camara_equipo, by = "equipment_id") %>% 
   select(id, camara_id, 
     archivo = filename, 
     archivo_nombre_original = old_filename)
+
+rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs, 
+  archivos_camara_tabs, camara, camara_sitio, camara_tabs)
+```
+
+### Grabadora
+
+```{r}
+soundscape_tabs <- ldply(bases_rutas, leerDbTab, "soundscape")
+archivos_microfono_tabs <- ldply(bases_rutas, leerDbTab, "files_soundscape_camera")
+archivos_microfono_ref_tabs <- ldply(bases_rutas, leerDbTab, "files_microphone_ref")
+equipo_tabs <- ldply(bases_rutas, leerDbTab, "equip_microphone")
+
+# creamos nuevos ids pegando id base de datos con ids de tabla y filtramos
+equipo <- equipo_tabs %>% 
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = ""))
+  ) %>%
+  filter(conglomerate_id %in% Conglomerado_muestra$id) %>%
+  select(-.id)
+
+soundscape <- soundscape_tabs %>%
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = "")),
+    microphone_id = as.numeric(paste(.id, microphone_id, sep = ""))
+  ) %>%
+  filter((conglomerate_id %in% Conglomerado_muestra$id))  %>%
+    # Puede haber casos donde equip_microphone tiene vacíos y soundscape no
+    # por lo que favorecemos la tabla soundscape
+  select(-.id)
+
+archivos_microfono <- archivos_microfono_tabs %>% 
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    soundscape_id = as.numeric(paste(.id, soundscape_id, sep = ""))
+  ) %>%
+  filter(soundscape_id %in% soundscape$id) %>%
+  select(-.id)
+
+archivos_microfono_ref <- archivos_microfono_ref_tabs %>% 
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    equipment_id = as.numeric(paste(.id, equipment_id, sep = ""))
+  ) %>%
+  filter(equipment_id %in% equipo$id) %>%
+  select(-.id)
 ```
 
 
 ```{r}
-base_output <- dbConnect(RSQLite::SQLite(), "../datos/base_salida/base_output.db")
-dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra),
-      overwrite = FALSE, append = TRUE)
-#dbCommit(base_output)
-dbDisconnect(base_output)
-dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra),
-      overwrite = FALSE, append = TRUE)
+sitios_cgls <- select(Sitio_muestra, sitio_muestra_id = id, 
+  conglomerate_id = conglomerado_muestra_id, sitio_numero) %>%
+  mutate(
+    sitio_numero = revalue(sitio_numero, c("Centro" = 1, "Sitio 2" = 2,
+      "Sitio 3" = 3, "Sitio 4" = 4))
+  )
+
+# unir tablas soundscape con trap_microphone
+# primero sacamos una sub-base de soundscape con un único registro por 
+# conglomerado-sitio, después unimos con sitios_cgls para obetebr sitio_muesrea_id
+soundscape_aux <- soundscape %>%
+  group_by(location) %>%
+  summarise_each(funs(first))
+
+equipo_aux <- equipo %>%
+  group_by(conglomerate_id) %>%
+  summarise_each(funs(first))
+
+soundscape_sitio <- soundscape_aux %>%
+  left_join(equipo_aux, by = c("conglomerate_id")) %>%     
+  mutate(
+    sitio_numero = substr(location, start = nchar(location), 
+      stop = nchar(location))
+  ) %>%
+  left_join(sitios_cgls, by = c("conglomerate_id", "sitio_numero"))
+
+Grabadora <- soundscape_sitio %>%
+  mutate(
+    fecha_inicio = start_time,  ### regex (variable de trap_camera)
+    hora_inicio = start_time,  ### regex
+    fecha_termino = stop_time, ### regex
+    hora_termino = stop_time, ## regex
+    lat = as.numeric(loc_mic_lat),
+    lon = as.numeric(loc_mic_lon),
+    lat_grado = as.integer(lat), 
+    lat_min = floor(60 * abs(lat - lat_grado)),
+    lat_seg = (3600 * abs(lat - lat_grado - sign(lat) * lat_min / 60)),
+    lon_grado = as.integer(lon), 
+    lon_min = floor(60 * abs(lon - lon_grado)),
+    lon_seg = (3600 * abs(lon - lon_grado - sign(lon) * lon_min / 60)), 
+    condiciones_ambientales = NA, 
+    microfonos_mojados = NA,
+    comentario = paste("Comentario soundscape:", comment.x, 
+      "Comentario equip_microphone", comment.y)
+    ) %>%
+  select(id = id.x, # nos quedamos con id de la tabla soundscape???
+    sitio_muestra_id, 
+    nombre = name, 
+    fecha_inicio, hora_inicio,
+    fecha_termino, hora_termino,
+    lat_grado, lat_min, lat_seg,
+    lon_grado, lon_min, lon_seg,
+    elipsoide = loc_mic_ellipsoid, 
+    gps_error = loc_mic_gps_error,
+    altitud = loc_mic_altitude,
+    distancia_centro = distance, 
+    condiciones_ambientales,
+    comentario
+    )
+
+# seleccionamos los campos de la tabla soundscape que formarán parte de
+# la tabla Archivo_grabadora
+soundscape_sub <- select(soundscape, soundscape_id = id, type_soundscape, 
+  type_ultrasonic)
+
+archivos_grabadora_2 <-  left_join(archivos_microfono, soundscape_sub, 
+  by = "soundscape_id")
+
+Archivo_grabadora <- archivos_grabadora_2 %>%
+  mutate(
+    es_audible = type_soundscape == 1
+  ) %>%
+  select(id, 
+    grabadora_id = soundscape_id, 
+    archivo = filename, # regex
+    archivo_nombre_original = old_filename, # regex
+    es_audible
+    )
+
+# unimos con camera_sitio y equip_camera
+soundscape_equipo <- soundscape_sitio %>%
+  select(
+    equipment_id = id.y, 
+    microphone_id = id.x
+  )
+
+Imagen_referencia_microfonos <- archivos_microfono_ref %>%
+  left_join(soundscape_equipo, by = "equipment_id") %>% 
+  select(id, 
+    grabadora_id = microphone_id, 
+    archivo = filename, 
+    archivo_nombre_original = old_filename)
+
+# no hay info. para crear las tablas Archivo_referencia_microfono, 
+# Imagen_referencia_grabadora
 ```
