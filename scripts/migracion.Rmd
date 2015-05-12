@@ -424,6 +424,11 @@ Camara <- camara_sitio %>%
     comentario
     )
 
+camara_sitio$resolucion[grep("1920", camara_sitio$resolucion)] <- "2MP"
+camara_sitio$resolucion[grep("4800", camara_sitio$resolucion)] <- "5MP"
+camara_sitio$resolucion[grep("11520", camara_sitio$resolucion)] <- "12MP"
+
+
 # seleccionamos los campos de la tabla trap_camera que formarán parte de
 # la tabla Archivo_camara
 trap_camera_sub <- select(camara, trap_camera_id = id, number_individuals, 
