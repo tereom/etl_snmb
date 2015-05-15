@@ -168,12 +168,11 @@ invasora <- invasora_tabs %>%
 archivos_invasora <- archivos_invasora_tabs %>%
   mutate(
     id = as.numeric(paste(.id, id, sep = "")),
-    invaders_id = as.numeric(paste(.id, invaders_id, sep = ""))
+    invaders_id = as.numeric(paste(.id, invaders_id, sep = "")),
   ) %>%
   # Como se filtró para obtener "invasora", debemos filtrar esta tabla también
   # para mantener consistencia.
-  filter(invaders_id %in% invasora$id) %>%
-  select(-.id) 
+  filter(invaders_id %in% invasora$id)
 ```
 
 Tablas a exportar
@@ -184,9 +183,13 @@ Tablas a exportar
 Archivo_especie_invasora <- archivos_invasora %>%
   mutate(
     especie_invasora_id = invaders_id,
-    archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    archivo_nombre_original = str_extract(old_filename, 
+      regex("[[:word:]]+\\.[[:word:]]+")),
     # Word matchea letras, números y guiones bajos.
-    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+"))
+    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
+    # misma carpeta no tengamos archivos duplicados
+    archivo = paste(.id, archivo, sep = "_")
     ) %>%
   select(id, especie_invasora_id, archivo_nombre_original, archivo)
 
@@ -275,8 +278,7 @@ archivos_huella_excreta <- archivos_huella_tabs %>%
     id = as.numeric(paste(.id, id, sep = "")),
     tracks_excrements_id = as.numeric(paste(.id, tracks_exrements_id, sep = ""))
   ) %>%
-  filter(tracks_excrements_id %in% huella_excreta$id) %>%
-  select(-.id) 
+  filter(tracks_excrements_id %in% huella_excreta$id)
 ```
 
 Tablas a exportar
@@ -290,7 +292,10 @@ Archivo_huella_excreta <- archivos_huella_excreta %>%
     huella_excreta_id = tracks_excrements_id,
     archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+")),
     # Word matchea letras, números y guiones bajos.
-    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+"))
+    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
+    # misma carpeta no tengamos archivos duplicados
+    archivo = paste(.id, archivo, sep = "_")
     ) %>%
   select(id, huella_excreta_id, archivo_nombre_original, archivo)
 
@@ -357,15 +362,13 @@ archivos_camara_ref <- archivos_camara_ref_tabs %>%
     id = as.numeric(paste(.id, id, sep = "")),
     equipment_id = as.numeric(paste(.id, equipment_id, sep = ""))
   ) %>%
-  filter(equipment_id %in% equipo$id) %>%
-  select(-.id)
+  filter(equipment_id %in% equipo$id)
 
 archivos_camara <- archivos_camara_tabs %>% 
   mutate(
     id = as.numeric(paste(.id, id, sep = "")),
     trap_camera_id = as.numeric(paste(.id, trap_camera_id, sep = ""))
-  ) %>%
-  select(-.id)
+  )
 
 camara <- camara_tabs %>%
   mutate(
@@ -430,6 +433,13 @@ camara_id_mapeo <- camara %>%
   inner_join(camara_aux, by = c("location")) %>%
   select(id_original = id.x, id_nuevo = id.y)
 
+# equipo_id_mapeo es una tabla donde se relaciona el id de la tabla equipo con el
+# id de la tabla equipo_aux (para los registros de la tabla "files_camera_ref")
+
+equipo_id_mapeo <- equipo %>%
+  inner_join(equipo_aux, by = c("conglomerate_id")) %>%
+  select(id_original = id.x, id_nuevo = id.y)
+
 camara_sitio <- camara_aux %>%
   left_join(equipo_aux, by = c("conglomerate_id")) %>%
   mutate(
@@ -468,15 +478,16 @@ Camara <- camara_sitio %>%
   select(id = id.x, #nos quedamos con id de la tabla trap_camera
     sitio_muestra_id, 
     nombre = camera, 
-    fecha_inicio, hora_inicio,
-    fecha_termino, hora_termino,
+    fecha_inicio, fecha_termino,
+    hora_inicio, hora_termino,
     lat_grado, lat_min, lat_seg,
     lon_grado, lon_min, lon_seg,
-    elipsoide = loc_camera_ellipsoid, 
-    gps_error = loc_camera_gps_error,
     altitud = loc_camera_altitude,
-    distancia_centro = distance, 
-    azimut, condiciones_ambientales,
+    gps_error = loc_camera_gps_error,
+    elipsoide = loc_camera_ellipsoid, 
+    condiciones_ambientales,
+    distancia_centro = distance,
+    azimut,
     resolucion = resolution, sensibilidad,
     comentario
     )
@@ -496,6 +507,9 @@ Archivo_camara <-  inner_join(archivos_camara, trap_camera_sub,
   by ="trap_camera_id") %>%
   mutate(
     archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
+    # misma carpeta no tengamos archivos duplicados
+    archivo = paste(.id, archivo, sep = "_"),
     archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+")),
     presencia = ifelse(number_individuals > 0, "T", "F"),
     numero_individuos = ifelse(presencia == "T", number_individuals, NA)
@@ -506,20 +520,29 @@ Archivo_camara <-  inner_join(archivos_camara, trap_camera_sub,
     numero_individuos
   )
 
-########### Aquí me quedé
+# equipo_camara_id_mapeo es para encontrar el camara_id (cliente nuevo) a partir
+# del equipment_id (cliente anterior), y así asociar una imagen de referencia
+# de una cámara a su registro correspondiente.
 
-# unimos con camera_sitio y equip_camera
-camara_equipo <- camara_sitio %>%
+equipo_camara_id_mapeo <- camara_sitio %>%
   select(
-    equipment_id = id.y, 
-    camara_id = id.x
+    camara_id = id.x,
+    equipment_id = id.y
   )
 
 Imagen_referencia_camara <- archivos_camara_ref %>%
-  left_join(camara_equipo, by = "equipment_id") %>%
-  select(id, camara_id, 
-    archivo = filename, 
-    archivo_nombre_original = old_filename)
+  inner_join(equipo_id_mapeo, by = c("equipment_id" = "id_original")) %>%
+  # El siguiente inner join (en lugar de left join) elimina las fotos que no
+  # se pueden asociar a una cámara
+  inner_join(equipo_camara_id_mapeo, by = c("id_nuevo" = "equipment_id")) %>%
+  mutate(
+    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
+    # misma carpeta no tengamos archivos duplicados
+    archivo = paste(.id, archivo, sep = "_"),
+    archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+"))
+  ) %>%
+  select(id, camara_id, archivo_nombre_original, archivo)
 
 rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs, 
   archivos_camara_tabs, camara, camara_sitio, camara_tabs)
@@ -528,10 +551,11 @@ rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs,
 ### Grabadora
 
 ```{r}
-soundscape_tabs <- ldply(bases_rutas, leerDbTab, "soundscape")
-archivos_microfono_tabs <- ldply(bases_rutas, leerDbTab, "files_soundscape_camera")
-archivos_microfono_ref_tabs <- ldply(bases_rutas, leerDbTab, "files_microphone_ref")
+
 equipo_tabs <- ldply(bases_rutas, leerDbTab, "equip_microphone")
+archivos_microfono_ref_tabs <- ldply(bases_rutas, leerDbTab, "files_microphone_ref")
+archivos_microfono_tabs <- ldply(bases_rutas, leerDbTab, "files_soundscape_camera")
+soundscape_tabs <- ldply(bases_rutas, leerDbTab, "soundscape")
 
 # creamos nuevos ids pegando id base de datos con ids de tabla y filtramos
 equipo <- equipo_tabs %>% 
@@ -542,34 +566,43 @@ equipo <- equipo_tabs %>%
   filter(conglomerate_id %in% Conglomerado_muestra$id) %>%
   select(-.id)
 
+archivos_microfono_ref <- archivos_microfono_ref_tabs %>% 
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    equipment_id = as.numeric(paste(.id, equipment_id, sep = ""))
+  ) %>%
+  filter(equipment_id %in% equipo$id)
+
+archivos_microfono <- archivos_microfono_tabs %>% 
+  mutate(
+    id = as.numeric(paste(.id, id, sep = "")),
+    soundscape_id = as.numeric(paste(.id, soundscape_id, sep = ""))
+  )
+
 soundscape <- soundscape_tabs %>%
   mutate(
     id = as.numeric(paste(.id, id, sep = "")),
     conglomerate_id = as.numeric(paste(.id, conglomerate_id, sep = "")),
     microphone_id = as.numeric(paste(.id, microphone_id, sep = ""))
   ) %>%
-  filter((conglomerate_id %in% Conglomerado_muestra$id))  %>%
-    # Puede haber casos donde equip_microphone tiene vacíos y soundscape no
-    # por lo que favorecemos la tabla soundscape
-  select(-.id)
-
-archivos_microfono <- archivos_microfono_tabs %>% 
-  mutate(
-    id = as.numeric(paste(.id, id, sep = "")),
-    soundscape_id = as.numeric(paste(.id, soundscape_id, sep = ""))
-  ) %>%
-  filter(soundscape_id %in% soundscape$id) %>%
-  select(-.id)
-
-archivos_microfono_ref <- archivos_microfono_ref_tabs %>% 
-  mutate(
-    id = as.numeric(paste(.id, id, sep = "")),
-    equipment_id = as.numeric(paste(.id, equipment_id, sep = ""))
-  ) %>%
-  filter(equipment_id %in% equipo$id) %>%
+  filter((conglomerate_id %in% Conglomerado_muestra$id) &
+    (id %in% archivos_microfono$soundscape_id))  %>%
+    # Seleccionamos los registros de "trap_camera"" que tengan fotos referenciadas
+    # (como éstos representan individuos vistos, y a cada uno se le asocian sus
+    # respectivas fotos, queremos eliminar registros fantasma).
+    # Ésto no se pudo hacer con "equip_camera": elimninar las cámaras sin registros
+    # de "trap_camera" (especies) asociados, puesto que no sirve la llave foránea
+    # de ésta última. sin embargo, ésta restricción se hará mediante un inner join
+    # a la hora de obtener la hora de inicio/término.
   select(-.id)
 ```
 
+Grabadora = soundscape + equip\_microphone
+
+1. Hacemos el join de tal manera que preservamos todos los renglones de grabadora 
+(soundscape).
+
+2. Unimos con los ids de sitios usando la variable conglomerate_id.
 
 ```{r}
 sitios_cgls <- select(Sitio_muestra, sitio_muestra_id = id, 
@@ -581,7 +614,17 @@ sitios_cgls <- select(Sitio_muestra, sitio_muestra_id = id,
 
 # unir tablas soundscape con trap_microphone
 # primero sacamos una sub-base de soundscape con un único registro por 
-# conglomerado-sitio, después unimos con sitios_cgls para obetebr sitio_muesrea_id
+# conglomerado-sitio, después unimos con sitios_cgls para obtener sitio_muestra_id
+
+# Tablas auxiliares para formar la tabla "Grabadora":
+
+# 1. soundscape_aux: tenemos un registro de "soundscape" por combinación de conglomerado
+# y sitio.
+# 2. equipo_aux: tenemos un registro de "equip_microphone" por "conglomerate_id". De
+# esta manera, al hacer el outer join por "conglomerate_id"" con "soundscape_aux" como
+# tabla maestra, tendremos un registro por combinación de conglomerado y sitio,
+# y artificios del join no cambiarán ésto.
+
 soundscape_aux <- soundscape %>%
   group_by(location) %>%
   summarise_each(funs(first))
@@ -590,9 +633,25 @@ equipo_aux <- equipo %>%
   group_by(conglomerate_id) %>%
   summarise_each(funs(first))
 
+# soundscape_id_mapeo es una tabla donde se relaciona el id de la tabla soundscape con el
+# id de la tabla soundscape_aux (que, al final, será el id de la tabla Grabadora)
+
+soundscape_id_mapeo <- soundscape %>%
+  inner_join(soundscape_aux, by = c("location")) %>%
+  select(id_original = id.x, id_nuevo = id.y)
+
+# equipo_id_mapeo es una tabla donde se relaciona el id de la tabla equipo con el
+# id de la tabla equipo_aux (para los registros de la tabla "files_microphone_ref")
+
+equipo_id_mapeo <- equipo %>%
+  inner_join(equipo_aux, by = c("conglomerate_id")) %>%
+  select(id_original = id.x, id_nuevo = id.y)
+
 soundscape_sitio <- soundscape_aux %>%
   left_join(equipo_aux, by = c("conglomerate_id")) %>%     
   mutate(
+    # quitando el último dígito de location, para obtener sitio_muestra_id, con
+    # ayuda de "sitios_cgls"
     sitio_numero = substr(location, start = nchar(location), 
       stop = nchar(location))
   ) %>%
@@ -600,10 +659,10 @@ soundscape_sitio <- soundscape_aux %>%
 
 Grabadora <- soundscape_sitio %>%
   mutate(
-    fecha_inicio = start_time,  ### regex (variable de trap_camera)
-    hora_inicio = start_time,  ### regex
-    fecha_termino = stop_time, ### regex
-    hora_termino = stop_time, ## regex
+    fecha_inicio = str_extract(start_time, regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")), #(variable de soundscape) 
+    hora_inicio = str_extract(start_time, regex("[0-9]{2}:[0-9]{2}:[0-9]{2}")), #(variable de soundscape) 
+    fecha_termino = str_extract(stop_time, regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")), #(variable de soundscape) 
+    hora_termino = str_extract(stop_time, regex("[0-9]{2}:[0-9]{2}:[0-9]{2}")), #(variable de soundscape) 
     lat = as.numeric(loc_mic_lat),
     lon = as.numeric(loc_mic_lon),
     lat_grado = as.integer(lat), 
@@ -617,53 +676,70 @@ Grabadora <- soundscape_sitio %>%
     comentario = paste("Comentario soundscape:", comment.x, 
       "Comentario equip_microphone", comment.y)
     ) %>%
-  select(id = id.x, # nos quedamos con id de la tabla soundscape???
+  select(id = id.x, # nos quedamos con id de la tabla soundscape
     sitio_muestra_id, 
     nombre = name, 
-    fecha_inicio, hora_inicio,
-    fecha_termino, hora_termino,
+    fecha_inicio, fecha_termino,
+    hora_inicio, hora_termino,
     lat_grado, lat_min, lat_seg,
     lon_grado, lon_min, lon_seg,
-    elipsoide = loc_mic_ellipsoid, 
-    gps_error = loc_mic_gps_error,
     altitud = loc_mic_altitude,
-    distancia_centro = distance, 
+    gps_error = loc_mic_gps_error,
+    elipsoide = loc_mic_ellipsoid,
+    #distancia_centro = distance, (esta variable no se pregunta en el nuevo cliente)
     condiciones_ambientales,
+    microfonos_mojados,
     comentario
     )
 
 # seleccionamos los campos de la tabla soundscape que formarán parte de
-# la tabla Archivo_grabadora
-soundscape_sub <- select(soundscape, soundscape_id = id, type_soundscape, 
-  type_ultrasonic)
+# la tabla Archivo_grabadora, así como obtenemos "grabadora_id" con ayuda de
+# soundscape_id_mapeo.
+soundscape_sub <- soundscape %>%
+  inner_join(soundscape_id_mapeo, by = c("id" = "id_original")) %>%
+  select(soundscape_id = id, grabadora_id = id_nuevo, type_soundscape)
 
-archivos_grabadora_2 <-  left_join(archivos_microfono, soundscape_sub, 
-  by = "soundscape_id")
+# Se utiliza un inner join para eliminar los archivos que están asociados a una
+# grabadora que a su vez está asociada a un conglomerado que quedó filtrado
 
-Archivo_grabadora <- archivos_grabadora_2 %>%
+Archivo_grabadora <-  inner_join(archivos_microfono, soundscape_sub, 
+  by ="soundscape_id") %>%
   mutate(
-    es_audible = type_soundscape == 1
+    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
+    # misma carpeta no tengamos archivos duplicados
+    archivo = paste(.id, archivo, sep = "_"),
+    archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    es_audible = ifelse(type_soundscape == 1, "T", "F")
   ) %>%
-  select(id, 
-    grabadora_id = soundscape_id, 
-    archivo = filename, # regex
-    archivo_nombre_original = old_filename, # regex
-    es_audible
-    )
+  select(id, grabadora_id, archivo_nombre_original, archivo, es_audible)
 
-# unimos con camera_sitio y equip_camera
-soundscape_equipo <- soundscape_sitio %>%
+# equipo_soundscape_id_mapeo es para encontrar el grabadora_id (cliente nuevo) a partir
+# del equipment_id (cliente anterior), y así asociar una imagen de referencia
+# de una grabadora a su registro correspondiente.
+
+equipo_soundscape_id_mapeo <- soundscape_sitio %>%
   select(
-    equipment_id = id.y, 
-    microphone_id = id.x
+    grabadora_id = id.x,
+    equipment_id = id.y
   )
 
 Imagen_referencia_microfonos <- archivos_microfono_ref %>%
-  left_join(soundscape_equipo, by = "equipment_id") %>% 
-  select(id, 
-    grabadora_id = microphone_id, 
-    archivo = filename, 
-    archivo_nombre_original = old_filename)
+  inner_join(equipo_id_mapeo, by = c("equipment_id" = "id_original")) %>%
+  # El siguiente inner join (en lugar de left join) elimina las fotos que no
+  # se pueden asociar a una cámara
+  inner_join(equipo_soundscape_id_mapeo, by = c("id_nuevo" = "equipment_id")) %>%
+  mutate(
+    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
+    # misma carpeta no tengamos archivos duplicados
+    archivo = paste(.id, archivo, sep = "_"),
+    archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+"))
+  ) %>%
+  select(id, grabadora_id, archivo_nombre_original, archivo)
+
+#rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs, 
+  #archivos_camara_tabs, camara, camara_sitio, camara_tabs)
 
 # no hay info. para crear las tablas Archivo_referencia_microfono, 
 # Imagen_referencia_grabadora
