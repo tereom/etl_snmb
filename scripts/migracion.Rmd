@@ -138,7 +138,8 @@ Sitio_muestra <- sitio %>%
     lat_seg, lon_grado, lon_min, lon_seg, altitud, gps_error, elipsoide,
     hay_evidencia)  
 
-rm("cat_municipio", "conglomerado", "conglomerado_tabs", "sitio")
+rm("cat_municipio", "conglomerado", "conglomerado_tabs", "sitio", "variables",
+  "separarSitios")
 ```
 
 #### invaders, file_invasores -> Transecto_especie_invasora, Especie_invasora, Archivo_Especie_invasora
@@ -168,7 +169,7 @@ invasora <- invasora_tabs %>%
 archivos_invasora <- archivos_invasora_tabs %>%
   mutate(
     id = as.numeric(paste(.id, id, sep = "")),
-    invaders_id = as.numeric(paste(.id, invaders_id, sep = "")),
+    invaders_id = as.numeric(paste(.id, invaders_id, sep = ""))
   ) %>%
   # Como se filtró para obtener "invasora", debemos filtrar esta tabla también
   # para mantener consistencia.
@@ -248,6 +249,9 @@ Especie_invasora <- transecto_especies_invasoras %>%
   ) %>%
   select(id, transecto_especies_invasoras_id, nombre_en_lista, nombre_comun, 
     nombre_cientifico, numero_individuos)  
+
+#invasora_tabs y conglomerado_fechas se utilizan para Huellas y excretas también (ver esquema).
+rm(invasora, archivos_invasora, archivos_invasora_tabs, transecto_especies_invasoras)
 ```
 
 #### tracks_excrements, file_tracks_excrements -> Transecto_huellas_excretas, Huella_excreta, Archivo_huella_excreta
@@ -337,7 +341,10 @@ Huella_excreta <- transecto_huellas_excretas %>%
     nombre_cientifico = species_name
   ) %>%
   select(id, transecto_huellas_excretas_id, es_huella, nombre_comun, 
-    nombre_cientifico, largo, ancho)  
+    nombre_cientifico, largo, ancho)
+
+rm(huella_excreta, archivos_huella_excreta, huella_tabs, archivos_huella_tabs,
+  invasora_horas, invasora_tabs, conglomerado_fechas, transecto_huellas_excretas)
 ```
 
 ### Cámara
@@ -514,7 +521,7 @@ Archivo_camara <-  inner_join(archivos_camara, trap_camera_sub,
     presencia = ifelse(number_individuals > 0, "T", "F"),
     numero_individuos = ifelse(presencia == "T", number_individuals, NA)
   ) %>%
-  select(id, camara_id, archivo, archivo_nombre_original, presencia, 
+  select(id, camara_id, archivo_nombre_original, archivo, presencia, 
     nombre_comun = species_name,  # como decidir?
     nombre_cientifico = species_name, 
     numero_individuos
@@ -545,7 +552,9 @@ Imagen_referencia_camara <- archivos_camara_ref %>%
   select(id, camara_id, archivo_nombre_original, archivo)
 
 rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs, 
-  archivos_camara_tabs, camara, camara_sitio, camara_tabs)
+  archivos_camara_tabs, camara, camara_sitio, camara_tabs, camara_aux,
+  camara_id_mapeo, equipo, equipo_aux, equipo_camara_id_mapeo, equipo_id_mapeo,
+  equipo_tabs, sitios_cgls, trap_camera_sub)
 ```
 
 ### Grabadora
@@ -738,8 +747,10 @@ Imagen_referencia_microfonos <- archivos_microfono_ref %>%
   ) %>%
   select(id, grabadora_id, archivo_nombre_original, archivo)
 
-#rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs, 
-  #archivos_camara_tabs, camara, camara_sitio, camara_tabs)
+rm(archivos_microfono, archivos_microfono_ref, archivos_microfono_ref_tabs,
+  archivos_microfono_tabs, equipo, equipo_aux, equipo_id_mapeo, equipo_soundscape_id_mapeo,
+  equipo_tabs, sitios_cgls, soundscape, soundscape_aux, soundscape_id_mapeo,
+  soundscape_sitio, soundscape_sub, soundscape_tabs)
 
 # no hay info. para crear las tablas Archivo_referencia_microfono, 
 # Imagen_referencia_grabadora
