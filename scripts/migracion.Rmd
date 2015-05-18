@@ -519,11 +519,13 @@ Archivo_camara <-  inner_join(archivos_camara, trap_camera_sub,
     archivo = paste(.id, archivo, sep = "_"),
     archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+")),
     presencia = ifelse(number_individuals > 0, "T", "F"),
+    nombre_comun = species_name,
+    nombre_cientifico = species_name,
     numero_individuos = ifelse(presencia == "T", number_individuals, NA)
   ) %>%
   select(id, camara_id, archivo_nombre_original, archivo, presencia, 
-    nombre_comun = species_name,  # como decidir?
-    nombre_cientifico = species_name, 
+    nombre_comun,  # como decidir?
+    nombre_cientifico, 
     numero_individuos
   )
 
@@ -754,4 +756,31 @@ rm(archivos_microfono, archivos_microfono_ref, archivos_microfono_ref_tabs,
 
 # no hay info. para crear las tablas Archivo_referencia_microfono, 
 # Imagen_referencia_grabadora
+```
+
+### Escribiendo tablas en la base de datos
+
+```{r}
+base_output <- dbConnect(RSQLite::SQLite(), "../datos/base_salida/base_output.db")
+dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE)
+
+dbWriteTable(base_output, "Transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE)
+
+dbWriteTable(base_output, "Transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE)
+
+dbWriteTable(base_output, "Camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE)
+
+dbWriteTable(base_output, "Grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE)
+
+#dbCommit(base_output)
+dbDisconnect(base_output)
 ```
