@@ -4,27 +4,6 @@ library(stringr)
 library(RSQLite)
 library(dplyr)
 
-bases_rutas <- list.files(path = "/Volumes/sacmod/data_06_02_2015", 
-  recursive = TRUE, full.names = TRUE, pattern = "\\.db$")
-
-sapply(bases_rutas, function(i) grep(".*Thumbs", i))
-
-bases_snmb <- bases_rutas[grep("Thumbs", bases_rutas, invert = TRUE)]
-basename(bases_snmb)
-
-
-bases_rutas <- list.files(path = "/Volumes/sacmod/piloto_faltantes_07052015", 
-  recursive = TRUE, full.names = TRUE, pattern = "\\.db$")
-
-sapply(bases_rutas, function(i) grep(".*Thumbs", i))
-
-bases_snmb <- bases_rutas[grep("Thumbs", bases_rutas, invert = TRUE)]
-basename(bases_snmb)
-
-
-conglomerado_tabs <- ldply(bases_rutas, leerDbTab, "conglomerates")
-
-
 ###############################################################################
 
 
