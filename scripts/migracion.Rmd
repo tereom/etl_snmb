@@ -14,7 +14,6 @@ library(RSQLite)
 library(dplyr)
 ```
 
-
 La siguiente función lee la base de datos (dir), extrae una tabla (tabla) y 
 regresa un _data frame_ con la tabla.
 
@@ -33,7 +32,8 @@ numérica del nombre de la base de datos y la columna id de la misma.
 
 ```{r}
 # Leemos las rutas de las bases de datos de entrada
-bases_rutas <- list.files(path = "../datos/bases_entrada", full.names = TRUE)
+bases_rutas <- list.files(path = "../datos/bases_snmb", 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.db$")
 names(bases_rutas) <- extract_numeric(basename(bases_rutas))
 
 # ldply asigna automáticamente el nombre del elemento de la lista como primera
@@ -47,6 +47,11 @@ conglomerado <- conglomerado_tabs %>%
     # Notar que al crear los id's de esta manera, eliminamos la necesidad de hacer
     # joins para obtener las llaves foráneas, ya que las conocemos de antemano.
     ) %>%
+  group_by(name) %>%
+    # Como hay bases de datos distintas con intersecciones no vacías, al agrupar,
+    # nos quedamos con el primer registro de cada conglomerado encontrado
+    summarise_each(funs(first)) %>%
+  ungroup() %>%
   select(-.id) # eliminamos la columna auxiliar .id
 ```
 
@@ -149,6 +154,7 @@ tabla Conglomerado_muestra.
 
 ```{r}
 invasora_tabs <- ldply(bases_rutas, leerDbTab, "invaders")
+
 archivos_invasora_tabs <- ldply(bases_rutas, leerDbTab, "files_invasores")
 
 # creamos nuevos ids pegando id base de datos con ids de tabla
@@ -182,12 +188,12 @@ Tablas a exportar
 
 ```{r}
 Archivo_especie_invasora <- archivos_invasora %>%
-  mutate(
+  dplyr::mutate(
     especie_invasora_id = invaders_id,
     archivo_nombre_original = str_extract(old_filename, 
-      regex("[[:word:]]+\\.[[:word:]]+")),
+      stringr::regex("[[:word:]]+\\.[[:word:]]+")),
     # Word matchea letras, números y guiones bajos.
-    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    archivo = str_extract(filename, stringr::regex("[[:word:]]+\\.[[:word:]]+")),
     # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
     # misma carpeta no tengamos archivos duplicados
     archivo = paste(.id, archivo, sep = "_")
@@ -251,7 +257,8 @@ Especie_invasora <- transecto_especies_invasoras %>%
     nombre_cientifico, numero_individuos)  
 
 #invasora_tabs y conglomerado_fechas se utilizan para Huellas y excretas también (ver esquema).
-rm(invasora, archivos_invasora, archivos_invasora_tabs, transecto_especies_invasoras)
+rm(invasora, archivos_invasora, archivos_invasora_tabs, 
+  transecto_especies_invasoras)
 ```
 
 #### tracks_excrements, file_tracks_excrements -> Transecto_huellas_excretas, Huella_excreta, Archivo_huella_excreta
@@ -551,12 +558,19 @@ Imagen_referencia_camara <- archivos_camara_ref %>%
     archivo = paste(.id, archivo, sep = "_"),
     archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+"))
   ) %>%
+  # Dos registros de Imagen_referencia_camara tienen id's duplicados, por lo que
+  # los eliminamos
+  group_by(id) %>%
+    summarise_each(funs(first)) %>%
+  ungroup() %>%
   select(id, camara_id, archivo_nombre_original, archivo)
 
 rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs, 
   archivos_camara_tabs, camara, camara_sitio, camara_tabs, camara_aux,
   camara_id_mapeo, equipo, equipo_aux, equipo_camara_id_mapeo, equipo_id_mapeo,
   equipo_tabs, sitios_cgls, trap_camera_sub)
+
+#Imagen_referencia_camara[duplicated(Imagen_referencia_camara$id),]
 ```
 
 ### Grabadora
@@ -761,7 +775,7 @@ rm(archivos_microfono, archivos_microfono_ref, archivos_microfono_ref_tabs,
 ### Escribiendo tablas en la base de datos
 
 ```{r}
-base_output <- dbConnect(RSQLite::SQLite(), "../datos/base_salida/base_output.db")
+base_output <- dbConnect(RSQLite::SQLite(), "../datos/bases_salida/base_output.db")
 dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE)
 dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE)
 
@@ -784,3 +798,11 @@ dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_r
 #dbCommit(base_output)
 dbDisconnect(base_output)
 ```
+
+
+        id camara_id         archivo_nombre_original
+34 1320001   1320001 23278_S3_CTR_20140626_01_01.JPG
+38 1350001   1350001 24465_S3_CTR_20140703_01_01.JPG
+                              archivo
+34 132000_23278_S3_CTR_20140626_3.JPG
+38 135000_24465_S3_CTR_20140703_3.JPG
