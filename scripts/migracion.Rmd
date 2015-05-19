@@ -36,6 +36,8 @@ bases_rutas <- list.files(path = dir_j,
 bases_snmb <- bases_rutas[grep("resources/db/snmb.db", bases_rutas, invert = F)]
 basename(bases_snmb)
 
+write.table(bases_snmb, file = "../datos/adicionales/rutas_bases_snmb.csv", 
+  sep = ",")
 # copiamos a carpeta local
 
 copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
@@ -47,8 +49,9 @@ copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
     to = paste(dir_local, "/", id_db, "_", basename(dir_j_archivo), sep = ""))
 }
 
-sapply(1:length(bases_snmb), function(i) copiaRenombra(bases_snmb[i], 
-  "../datos/bases_snmb", 1000*i))
+snmb_id <- sapply(1:length(bases_snmb), function(i) 
+  copiaRenombra(bases_snmb[i], 
+  "../datos/bases_snmb_p", 1000*i))
 ```
 
 
@@ -504,8 +507,16 @@ camara_sitio <- camara_aux %>%
   left_join(sitios_cgls, by = c("conglomerate_id", "sitio_numero"))
 
 camara_sitio$resolution[grep("1920", camara_sitio$resolution)] <- "2MP"
+# typos:
+camara_sitio$resolution[grep("1020", camara_sitio$resolution)] <- "2MP"
+camara_sitio$resolution[grep("1080", camara_sitio$resolution)] <- "2MP"
+camara_sitio$resolution[grep("Alta", camara_sitio$resolution)] <- "2MP"
+
 camara_sitio$resolution[grep("4800", camara_sitio$resolution)] <- "5MP"
-camara_sitio$resolution[grep("11520", camara_sitio$resolution)] <- "12MP"
+# typo:
+camara_sitio$resolution[grep("SMP", camara_sitio$resolution)] <- "5MP"
+camara_sitio$resolution[grep("5", camara_sitio$resolution)] <- "5MP"
+
 
 Camara <- camara_sitio %>%
   mutate(
@@ -544,6 +555,9 @@ Camara <- camara_sitio %>%
     resolucion = resolution, sensibilidad,
     comentario
     )
+# Arreglamos typos
+Camara$sensibilidad[Camara$sensibilidad %in% c("Alta", "ALTA", "alta", 
+  "1920X1080p", "HIGH")] <- "High"
 
 # seleccionamos los campos de la tabla trap_camera que formarán parte de
 # la tabla Archivo_camara, así como obtenemos "camara_id" con ayuda de
