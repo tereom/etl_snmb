@@ -862,6 +862,21 @@ dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_r
 dbDisconnect(base_output)
 ```
 
+### Creando lista con nombres de archivos
+
+```{r}
+archivos <- c(
+  Archivo_especie_invasora$archivo,
+  Archivo_huella_excreta$archivo,
+  Archivo_camara$archivo,
+  Imagen_referencia_camara$archivo,
+  Archivo_grabadora$archivo,
+  Imagen_referencia_microfonos$archivo)
+
+write.table(archivos, file = "../datos/adicionales/nombres_archivos_snmb.csv", 
+  sep = ",", row.names = FALSE)
+```
+
 Observaciones en camara_id:
 
         id camara_id         archivo_nombre_original
