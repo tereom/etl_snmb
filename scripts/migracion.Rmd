@@ -3,6 +3,16 @@ title: "Migracion de primera versión"
 output: html_document
 ---
 
+Supuestos:
+
+1. Los clientes finales están almacenados en carpetas de la forma 
+resources/db/snmb.db, esto supone que los clientes en archives/db/snmb.db son
+respaldos.
+
+2. Cada vez que encontramos un conglomerado en un cliente final, este 
+se ingresó completo, implica que si encontramos un mismo conglomerado en 
+más de un cliente estos registros serán idénticos.
+
 Cargamos los paquetes, RSQLite nos sirve para escribir las tablas en una base
 de datos Sqlite.
 
@@ -560,9 +570,9 @@ Imagen_referencia_camara <- archivos_camara_ref %>%
   ) %>%
   # Dos registros de Imagen_referencia_camara tienen id's duplicados, por lo que
   # los eliminamos
-  group_by(id) %>%
-    summarise_each(funs(first)) %>%
-  ungroup() %>%
+#   group_by(id) %>%
+#     summarise_each(funs(first)) %>%
+#   ungroup() %>%
   select(id, camara_id, archivo_nombre_original, archivo)
 
 rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs, 
@@ -799,6 +809,7 @@ dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_r
 dbDisconnect(base_output)
 ```
 
+Observaciones en camara_id:
 
         id camara_id         archivo_nombre_original
 34 1320001   1320001 23278_S3_CTR_20140626_01_01.JPG
