@@ -97,6 +97,19 @@ conglomerado <- conglomerado_tabs %>%
   select(-.id) # eliminamos la columna auxiliar .id
 ```
 
+Veamos algunos diagnósticos
+
+```{r}
+table(conglomerado_tabs$name)[table(conglomerado_tabs$name) > 1]
+# hay casos en los que tenemos un mismo conglomeradoo en 131 clientes (8745, 8917)
+
+subset(conglomerado_tabs, name=="8917")
+
+bases_snmb[109:127]
+```
+
+
+
 2. Separamos en las dos tablas Conglomerado\_muestra y Sitio\_muestra
 
 **Falta buscar niveles conglomerate_type y property de cliente Thilo**
@@ -196,6 +209,10 @@ Sitio_muestra <- sitio %>%
 rm("cat_municipio", "conglomerado", "conglomerado_tabs", "sitio", "variables",
   "separarSitios")
 ```
+
+
+
+
 
 #### invaders, file_invasores -> Transecto_especie_invasora, Especie_invasora, Archivo_Especie_invasora
 
@@ -868,3 +885,53 @@ Observaciones en camara_id:
                               archivo
 34 132000_23278_S3_CTR_20140626_3.JPG
 38 135000_24465_S3_CTR_20140703_3.JPG
+
+
+### Copiar imágenes, grabaciones y videos a carpetas
+
+Imágenes:
+14
+```{r}
+dir_j = "/Volumes/sacmod"
+
+# en Windows
+dir_j = "//madmexservices.conabio.gob.mx/sacmod/"
+
+# jpg hay errores por caracteres especiales en las rutas
+rutas_jpg <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.jpg$", ignore.case = TRUE)
+
+rutas_wav <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.wav$")
+
+rutas_avi <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.AVI$")
+
+archivos_copiar <- read.csv("../datos/adicionales/nombres_archivos_snmb.csv",
+  header = TRUE)
+
+
+rutas_jpg_2 <- str_extract(rutas_jpj, regex("[[:word:]]+\\.[[:word:]]+$"))
+rutas_jpg_3 <- rutas_jpg[rutas_jpg_2 %in% archivos_copiar$x]
+
+fallas <- file.copy(rutas_jpg_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/imagenes")
+sum(!fallas)
+
+rutas_wav <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.wav$")
+
+rutas_wav_2 <- str_extract(rutas_wav, regex("[[:word:]]+\\.[[:word:]]+$"))
+rutas_wav_3 <- rutas_wav[rutas_wav_2 %in% archivos_copiar$x]
+rutas_wav_3 <- unique(rutas_wav_3)
+
+fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
+sum(!fallas)
+
+rutas_avi_2 <- str_extract(rutas_avi, regex("[[:word:]]+\\.[[:word:]]+$"))
+rutas_avi_3 <- rutas_wav[rutas_avi_2 %in% archivos_copiar$x]
+rutas_avi_3 <- unique(rutas_avi_3)
+
+fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
+sum(!fallas)
+```
+
