@@ -885,3 +885,8 @@ Observaciones en camara_id:
                               archivo
 34 132000_23278_S3_CTR_20140626_3.JPG
 38 135000_24465_S3_CTR_20140703_3.JPG
+
+
+#Videos (no se copió ninguno) porque no tienen camera_id:
+#videos <- archivos_camara$filename %in% grep(".AVI", archivos_camara$filename, value = TRUE)
+#archivos_camara[videos,]
