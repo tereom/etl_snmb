@@ -909,7 +909,6 @@ Observaciones en camara_id:
 38 135000_24465_S3_CTR_20140703_3.JPG
 
 
-<<<<<<< HEAD
 ### Copiar imágenes, grabaciones y videos a carpetas
 
 Imágenes:
@@ -981,13 +980,53 @@ cat_cgl_ids$id_sec <- 1:length(cat_cgl_ids$id)
 cat_transecto_ei_ids <- data.frame(
   id = unique(Transecto_especies_invasoras_muestra$id))
 cat_transecto_ei_ids$id_sec <- 1:length(cat_transecto_ei_ids$id)
+cat_ei_ids <- data.frame(
+  id = unique(Especie_invasora$id))
+cat_ei_ids$id_sec <- 1:length(cat_ei_ids$id)
 
 cat_transecto_he_ids <- data.frame(
   id = unique(Transecto_huellas_excretas_muestra$id))
-cat_transecto_he_ids$id_sec <- 1:length(cat_transecto_hs_ids$id)
+cat_transecto_he_ids$id_sec <- 1:length(cat_transecto_he_ids$id)
 
+Conglomerado_muestra <- Conglomerado_muestra %>%
+  left_join(cat_cgl_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Conglomerado_muestra)
 
+Sitio_muestra <- Sitio_muestra %>%
+  left_join(select(cat_cgl_ids, conglomerado_muestra_id = id, id_sec),
+    by = "conglomerado_muestra_id") %>%
+  mutate(conglomerado_muestra_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Sitio_muestra)
 
+Transecto_especies_invasoras_muestra <- Transecto_especies_invasoras_muestra %>%
+  left_join(select(cat_cgl_ids, conglomerado_muestra_id = id, id_sec),
+    by = "conglomerado_muestra_id") %>%
+  mutate(conglomerado_muestra_id = id_sec) %>%
+  select(-id_sec) %>%
+  left_join(cat_transecto_ei_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Transecto_especies_invasoras_muestra)
+
+Especie_invasora <- Especie_invasora %>%
+  left_join(select(cat_transecto_ei_ids, transecto_especies_invasoras_id = id,
+    id_sec), by = "transecto_especies_invasoras_id") %>%
+  mutate(transecto_especies_invasoras_id = id_sec) %>%
+  select(-id_sec) %>%
+  left_join(cat_ei_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Especie_invasora)  
+  
+Archivo_especie_invasora <- Archivo_especie_invasora %>%
+  left_join(select(cat_ei_ids, especie_invasora_id = id, id_sec), 
+    by = "especie_invasora_id") %>%
+  mutate(especie_invasora_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Archivo_especie_invasora)
 ```
 
 
@@ -1038,4 +1077,3 @@ Observaciones en camara_id:
 #Videos (no se copió ninguno) porque no tienen camera_id:
 #videos <- archivos_camara$filename %in% grep(".AVI", archivos_camara$filename, value = TRUE)
 #archivos_camara[videos,]
->>>>>>> 6fa2ae1ce6a9be673a5fa8ed7ce41214f869ee13
