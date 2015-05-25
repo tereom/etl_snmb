@@ -35,11 +35,15 @@ dir_j = "/Volumes/sacmod"
 bases_rutas <- list.files(path = dir_j, 
   recursive = TRUE, full.names = TRUE, pattern = "\\.db$")
 
-bases_snmb <- bases_rutas[grep("resources/db/snmb.db", bases_rutas, invert = F)]
+# bases con nombre igual al número de conglomerado
+snmb_num <- c("46239.db","47586.db","50927.db","55160.db","55652.db","56379.db","57124.db","57627.db","57905.db","58143.db","58388.db","58650.db","59144.db","60406.db","60442.db","60655.db","61164.db","61225.db","61718.db","61736.db","61925.db","62713.db","63192.db","63211.db","63432.db","63504.db","63955.db","63987.db","64223.db","66289.db","66549.db","66847.db","67141.db","67145.db","67435.db")
+snmb_nom <- 1:length(bases_rutas) %in% grep("resources/db/snmb.db", 
+  bases_rutas, invert = F)
+bases_snmb <- bases_rutas[snmb_nom | (basename(bases_rutas) %in% snmb_num)]
 basename(bases_snmb)
 
-#write.table(bases_snmb, file = "../datos/adicionales/rutas_bases_snmb.csv", 
-#  sep = ",")
+write.table(bases_snmb, file = "../datos/adicionales/rutas_bases_snmb.csv", 
+  sep = ",")
 
 # copiamos a carpeta local
 copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
@@ -48,16 +52,13 @@ copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
   # id_db: id numérico que se utilizará para distinguir bases en migración
   file.copy(dir_j_archivo, dir_local,  overwrite = FALSE)
   file.rename(from = paste(dir_local, basename(dir_j_archivo), sep = "/"), 
-    to = paste(dir_local, "/", id_db, "_", basename(dir_j_archivo), sep = ""))
+    to = paste(dir_local, "/", id_db, "_", "snmb.db", sep = ""))
 }
 
 # snmb_id <- sapply(1:length(bases_snmb), function(i) 
 #   copiaRenombra(bases_snmb[i], 
-#   "../datos/bases_snmb_p", 1000*i))
+#   "../datos/bases_snmb_2", 1000*i))
 
-snmb_id <- sapply(1:length(bases_snmb), function(i) 
-  copiaRenombra(bases_snmb[i], 
-  "../datos/bases_snmb", 1000*i))
 
 ```
 
@@ -81,7 +82,7 @@ numérica del nombre de la base de datos y la columna id de la misma.
 
 ```{r}
 # Leemos las rutas de las bases de datos de entrada
-bases_rutas <- list.files(path = "../datos/bases_snmb", 
+bases_rutas <- list.files(path = "../datos/bases_snmb_2", 
   recursive = TRUE, full.names = TRUE, pattern = "\\.db$")
 names(bases_rutas) <- extract_numeric(basename(bases_rutas))
 
