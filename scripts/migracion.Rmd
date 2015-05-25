@@ -980,13 +980,14 @@ cat_cgl_ids$id_sec <- 1:length(cat_cgl_ids$id)
 cat_transecto_ei_ids <- data.frame(
   id = unique(Transecto_especies_invasoras_muestra$id))
 cat_transecto_ei_ids$id_sec <- 1:length(cat_transecto_ei_ids$id)
-cat_ei_ids <- data.frame(
-  id = unique(Especie_invasora$id))
+cat_ei_ids <- data.frame(id = unique(Especie_invasora$id))
 cat_ei_ids$id_sec <- 1:length(cat_ei_ids$id)
 
 cat_transecto_he_ids <- data.frame(
   id = unique(Transecto_huellas_excretas_muestra$id))
 cat_transecto_he_ids$id_sec <- 1:length(cat_transecto_he_ids$id)
+cat_he_ids <- data.frame(id = unique(Huella_excreta$id))
+cat_he_ids$id_sec <- 1:length(cat_he_ids$id)
 
 Conglomerado_muestra <- Conglomerado_muestra %>%
   left_join(cat_cgl_ids, by = "id") %>%
@@ -1001,6 +1002,7 @@ Sitio_muestra <- Sitio_muestra %>%
   select(-id_sec)
 glimpse(Sitio_muestra)
 
+## Especies Invasoras
 Transecto_especies_invasoras_muestra <- Transecto_especies_invasoras_muestra %>%
   left_join(select(cat_cgl_ids, conglomerado_muestra_id = id, id_sec),
     by = "conglomerado_muestra_id") %>%
@@ -1027,6 +1029,34 @@ Archivo_especie_invasora <- Archivo_especie_invasora %>%
   mutate(especie_invasora_id = id_sec) %>%
   select(-id_sec)
 glimpse(Archivo_especie_invasora)
+
+## Huellas y excretas
+Transecto_huellas_excretas_muestra <- Transecto_huellas_excretas_muestra %>%
+  left_join(select(cat_cgl_ids, conglomerado_muestra_id = id, id_sec),
+    by = "conglomerado_muestra_id") %>%
+  mutate(conglomerado_muestra_id = id_sec) %>%
+  select(-id_sec) %>%
+  left_join(cat_transecto_he_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Transecto_huellas_excretas_muestra)
+
+Huella_excreta <- Huella_excreta %>%
+  left_join(select(cat_transecto_he_ids, transecto_huellas_excretas_id = id,
+    id_sec), by = "transecto_huellas_excretas_id") %>%
+  mutate(transecto_huellas_excretas_id = id_sec) %>%
+  select(-id_sec) %>%
+  left_join(cat_he_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Huella_excreta)  
+  
+Archivo_huella_excreta <- Archivo_huella_excreta %>%
+  left_join(select(cat_he_ids, huella_excreta_id = id, id_sec), 
+    by = "huella_excreta_id") %>%
+  mutate(huella_excreta_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Archivo_huella_excreta)
 ```
 
 
