@@ -838,7 +838,9 @@ rm(archivos_microfono, archivos_microfono_ref, archivos_microfono_ref_tabs,
 ### Escribiendo tablas en la base de datos
 
 ```{r}
-base_output <- dbConnect(RSQLite::SQLite(), "../datos/bases_salida/base_output.db")
+library(RPostgreSQL)
+#base_output <- dbConnect(RSQLite::SQLite(), "../datos/bases_salida/base_output.db")
+dbConnect(RPostgreSQL::PostgreSQL(), "fpardo@localhost/snmb_v1", "Kamatar1")
 dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE)
 dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE)
 
