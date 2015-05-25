@@ -965,7 +965,6 @@ Arreglando Ids
 # Los siguientes ids se arreglan de manera automática por no ser llaves foráneas
 Archivo_especie_invasora$id <- 1:length(Archivo_especie_invasora$id)
 Archivo_huella_excreta$id <- 1:length(Archivo_huella_excreta$id)
-Imagen_referencia_camara$id <- 1:length(Imagen_referencia_camara$id)
 
 Archivo_camara$id <- 1:length(Archivo_camara$id)
 Imagen_referencia_camara$id <- 1:length(Imagen_referencia_camara$id)
@@ -988,6 +987,12 @@ cat_transecto_he_ids <- data.frame(
 cat_transecto_he_ids$id_sec <- 1:length(cat_transecto_he_ids$id)
 cat_he_ids <- data.frame(id = unique(Huella_excreta$id))
 cat_he_ids$id_sec <- 1:length(cat_he_ids$id)
+
+cat_grabadora_ids <- data.frame(id = unique(Grabadora$id))
+cat_grabadora_ids$id_sec <- 1:length(cat_grabadora_ids$id)
+
+cat_camara_ids <- data.frame(id = unique(Camara$id))
+cat_camara_ids$id_sec <- 1:length(cat_camara_ids$id)
 
 Conglomerado_muestra <- Conglomerado_muestra %>%
   left_join(cat_cgl_ids, by = "id") %>%
@@ -1057,6 +1062,48 @@ Archivo_huella_excreta <- Archivo_huella_excreta %>%
   mutate(huella_excreta_id = id_sec) %>%
   select(-id_sec)
 glimpse(Archivo_huella_excreta)
+
+# Cámara
+Camara <- Camara %>%
+  left_join(cat_camara_ids, by = "id") %>% 
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Camara)
+
+Imagen_referencia_camara <- Imagen_referencia_camara %>%
+  left_join(select(cat_camara_ids, camara_id = id, id_sec), 
+    by = "camara_id") %>%
+  mutate(camara_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Imagen_referencia_camara)
+
+Archivo_camara <- Archivo_camara %>%
+  left_join(select(cat_camara_ids, camara_id = id, id_sec), 
+    by = "camara_id") %>%
+  mutate(camara_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Archivo_camara)
+
+# Grabadora
+Grabadora <- Grabadora %>%
+  left_join(cat_grabadora_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Grabadora)
+
+Imagen_referencia_microfonos <- Imagen_referencia_microfonos %>%
+  left_join(select(cat_grabadora_ids, grabadora_id = id, id_sec), 
+    by = "grabadora_id") %>%
+  mutate(grabadora_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Imagen_referencia_microfonos)
+
+Archivo_grabadora <- Archivo_grabadora %>%
+  left_join(select(cat_grabadora_ids, grabadora_id = id, id_sec), 
+    by = "grabadora_id") %>%
+  mutate(grabadora_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Archivo_grabadora)
 ```
 
 
