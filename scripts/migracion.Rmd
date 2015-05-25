@@ -35,11 +35,15 @@ dir_j = "/Volumes/sacmod"
 bases_rutas <- list.files(path = dir_j, 
   recursive = TRUE, full.names = TRUE, pattern = "\\.db$")
 
-bases_snmb <- bases_rutas[grep("resources/db/snmb.db", bases_rutas, invert = F)]
+# bases con nombre igual al número de conglomerado
+snmb_num <- c("46239.db","47586.db","50927.db","55160.db","55652.db","56379.db","57124.db","57627.db","57905.db","58143.db","58388.db","58650.db","59144.db","60406.db","60442.db","60655.db","61164.db","61225.db","61718.db","61736.db","61925.db","62713.db","63192.db","63211.db","63432.db","63504.db","63955.db","63987.db","64223.db","66289.db","66549.db","66847.db","67141.db","67145.db","67435.db")
+snmb_nom <- 1:length(bases_rutas) %in% grep("resources/db/snmb.db", 
+  bases_rutas, invert = F)
+bases_snmb <- bases_rutas[snmb_nom | (basename(bases_rutas) %in% snmb_num)]
 basename(bases_snmb)
 
-#write.table(bases_snmb, file = "../datos/adicionales/rutas_bases_snmb.csv", 
-#  sep = ",")
+write.table(bases_snmb, file = "../datos/adicionales/rutas_bases_snmb.csv", 
+  sep = ",")
 
 # copiamos a carpeta local
 copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
@@ -48,16 +52,13 @@ copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
   # id_db: id numérico que se utilizará para distinguir bases en migración
   file.copy(dir_j_archivo, dir_local,  overwrite = FALSE)
   file.rename(from = paste(dir_local, basename(dir_j_archivo), sep = "/"), 
-    to = paste(dir_local, "/", id_db, "_", basename(dir_j_archivo), sep = ""))
+    to = paste(dir_local, "/", id_db, "_", "snmb.db", sep = ""))
 }
 
 # snmb_id <- sapply(1:length(bases_snmb), function(i) 
 #   copiaRenombra(bases_snmb[i], 
-#   "../datos/bases_snmb_p", 1000*i))
+#   "../datos/bases_snmb_2", 1000*i))
 
-snmb_id <- sapply(1:length(bases_snmb), function(i) 
-  copiaRenombra(bases_snmb[i], 
-  "../datos/bases_snmb", 1000*i))
 
 ```
 
@@ -81,7 +82,7 @@ numérica del nombre de la base de datos y la columna id de la misma.
 
 ```{r}
 # Leemos las rutas de las bases de datos de entrada
-bases_rutas <- list.files(path = "../datos/bases_snmb", 
+bases_rutas <- list.files(path = "../datos/bases_snmb_2", 
   recursive = TRUE, full.names = TRUE, pattern = "\\.db$")
 names(bases_rutas) <- extract_numeric(basename(bases_rutas))
 
@@ -910,7 +911,6 @@ Observaciones en camara_id:
 38 135000_24465_S3_CTR_20140703_3.JPG
 
 
-<<<<<<< HEAD
 ### Copiar imágenes, grabaciones y videos a carpetas
 
 Imágenes:
@@ -982,22 +982,131 @@ cat_cgl_ids$id_sec <- 1:length(cat_cgl_ids$id)
 cat_transecto_ei_ids <- data.frame(
   id = unique(Transecto_especies_invasoras_muestra$id))
 cat_transecto_ei_ids$id_sec <- 1:length(cat_transecto_ei_ids$id)
+cat_ei_ids <- data.frame(id = unique(Especie_invasora$id))
+cat_ei_ids$id_sec <- 1:length(cat_ei_ids$id)
 
 cat_transecto_he_ids <- data.frame(
   id = unique(Transecto_huellas_excretas_muestra$id))
-cat_transecto_he_ids$id_sec <- 1:length(cat_transecto_hs_ids$id)
+cat_transecto_he_ids$id_sec <- 1:length(cat_transecto_he_ids$id)
+cat_he_ids <- data.frame(id = unique(Huella_excreta$id))
+cat_he_ids$id_sec <- 1:length(cat_he_ids$id)
 
-cat_camara_ids <- data.frame(
-  id = unique(Camara$id))
+cat_grabadora_ids <- data.frame(id = unique(Grabadora$id))
+cat_grabadora_ids$id_sec <- 1:length(cat_grabadora_ids$id)
+
+cat_camara_ids <- data.frame(id = unique(Camara$id))
 cat_camara_ids$id_sec <- 1:length(cat_camara_ids$id)
 
-cat_grabadora_ids <- data.frame(
-  id = unique(Grabadora$id))
-cat_grabadora_ids$id_sec <- 1: length(cat_grabadora_ids$id)
+Conglomerado_muestra <- Conglomerado_muestra %>%
+  left_join(cat_cgl_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Conglomerado_muestra)
 
+Sitio_muestra <- Sitio_muestra %>%
+  left_join(select(cat_cgl_ids, conglomerado_muestra_id = id, id_sec),
+    by = "conglomerado_muestra_id") %>%
+  mutate(conglomerado_muestra_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Sitio_muestra)
+
+## Especies Invasoras
+Transecto_especies_invasoras_muestra <- Transecto_especies_invasoras_muestra %>%
+  left_join(select(cat_cgl_ids, conglomerado_muestra_id = id, id_sec),
+    by = "conglomerado_muestra_id") %>%
+  mutate(conglomerado_muestra_id = id_sec) %>%
+  select(-id_sec) %>%
+  left_join(cat_transecto_ei_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Transecto_especies_invasoras_muestra)
+
+Especie_invasora <- Especie_invasora %>%
+  left_join(select(cat_transecto_ei_ids, transecto_especies_invasoras_id = id,
+    id_sec), by = "transecto_especies_invasoras_id") %>%
+  mutate(transecto_especies_invasoras_id = id_sec) %>%
+  select(-id_sec) %>%
+  left_join(cat_ei_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Especie_invasora)  
+  
+Archivo_especie_invasora <- Archivo_especie_invasora %>%
+  left_join(select(cat_ei_ids, especie_invasora_id = id, id_sec), 
+    by = "especie_invasora_id") %>%
+  mutate(especie_invasora_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Archivo_especie_invasora)
+
+## Huellas y excretas
+Transecto_huellas_excretas_muestra <- Transecto_huellas_excretas_muestra %>%
+  left_join(select(cat_cgl_ids, conglomerado_muestra_id = id, id_sec),
+    by = "conglomerado_muestra_id") %>%
+  mutate(conglomerado_muestra_id = id_sec) %>%
+  select(-id_sec) %>%
+  left_join(cat_transecto_he_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Transecto_huellas_excretas_muestra)
+
+Huella_excreta <- Huella_excreta %>%
+  left_join(select(cat_transecto_he_ids, transecto_huellas_excretas_id = id,
+    id_sec), by = "transecto_huellas_excretas_id") %>%
+  mutate(transecto_huellas_excretas_id = id_sec) %>%
+  select(-id_sec) %>%
+  left_join(cat_he_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Huella_excreta)  
+  
+Archivo_huella_excreta <- Archivo_huella_excreta %>%
+  left_join(select(cat_he_ids, huella_excreta_id = id, id_sec), 
+    by = "huella_excreta_id") %>%
+  mutate(huella_excreta_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Archivo_huella_excreta)
+
+# Cámara
 Camara <- Camara %>%
-  inner_join(cat_camara_ids, by ="id") %>%
-  mutate
+  left_join(cat_camara_ids, by = "id") %>% 
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Camara)
+
+Imagen_referencia_camara <- Imagen_referencia_camara %>%
+  left_join(select(cat_camara_ids, camara_id = id, id_sec), 
+    by = "camara_id") %>%
+  mutate(camara_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Imagen_referencia_camara)
+
+Archivo_camara <- Archivo_camara %>%
+  left_join(select(cat_camara_ids, camara_id = id, id_sec), 
+    by = "camara_id") %>%
+  mutate(camara_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Archivo_camara)
+
+# Grabadora
+Grabadora <- Grabadora %>%
+  left_join(cat_grabadora_ids, by = "id") %>%
+  mutate(id = id_sec) %>%
+  select(-id_sec)
+glimpse(Grabadora)
+
+Imagen_referencia_microfonos <- Imagen_referencia_microfonos %>%
+  left_join(select(cat_grabadora_ids, grabadora_id = id, id_sec), 
+    by = "grabadora_id") %>%
+  mutate(grabadora_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Imagen_referencia_microfonos)
+
+Archivo_grabadora <- Archivo_grabadora %>%
+  left_join(select(cat_grabadora_ids, grabadora_id = id, id_sec), 
+    by = "grabadora_id") %>%
+  mutate(grabadora_id = id_sec) %>%
+  select(-id_sec)
+glimpse(Archivo_grabadora)
 ```
 
 
