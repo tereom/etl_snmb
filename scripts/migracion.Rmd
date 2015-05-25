@@ -17,6 +17,8 @@ Cargamos los paquetes, RSQLite nos sirve para escribir las tablas en una base
 de datos Sqlite.
 
 ```{r, message=FALSE}
+setwd("../scripts")
+
 library(plyr)
 library(tidyr)
 library(stringr)
@@ -55,7 +57,8 @@ copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
 
 snmb_id <- sapply(1:length(bases_snmb), function(i) 
   copiaRenombra(bases_snmb[i], 
-  "../datos/bases_snmb_p", 100*i))
+  "../datos/bases_snmb", 1000*i))
+
 ```
 
 
@@ -265,10 +268,10 @@ Archivo_especie_invasora <- archivos_invasora %>%
     archivo_nombre_original = str_extract(old_filename, 
       stringr::regex("[[:word:]]+\\.[[:word:]]+")),
     # Word matchea letras, números y guiones bajos.
-    archivo = str_extract(filename, stringr::regex("[[:word:]]+\\.[[:word:]]+")),
+    archivo = str_extract(filename, stringr::regex("[[:word:]]+\\.[[:word:]]+"))
     # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
     # misma carpeta no tengamos archivos duplicados
-    archivo = paste(.id, archivo, sep = "_")
+    # archivo = paste(.id, archivo, sep = "_")
     ) %>%
   select(id, especie_invasora_id, archivo_nombre_original, archivo)
 
@@ -375,10 +378,10 @@ Archivo_huella_excreta <- archivos_huella_excreta %>%
     huella_excreta_id = tracks_excrements_id,
     archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+")),
     # Word matchea letras, números y guiones bajos.
-    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
+    archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+"))
     # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
     # misma carpeta no tengamos archivos duplicados
-    archivo = paste(.id, archivo, sep = "_")
+    # archivo = paste(.id, archivo, sep = "_")
     ) %>%
   select(id, huella_excreta_id, archivo_nombre_original, archivo)
 
@@ -606,7 +609,7 @@ Archivo_camara <-  inner_join(archivos_camara, trap_camera_sub,
     archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
     # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
     # misma carpeta no tengamos archivos duplicados
-    archivo = paste(.id, archivo, sep = "_"),
+    # archivo = paste(.id, archivo, sep = "_"),
     archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+")),
     presencia = ifelse(number_individuals > 0, "T", "F"),
     nombre_comun = species_name,
@@ -638,13 +641,13 @@ Imagen_referencia_camara <- archivos_camara_ref %>%
     archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
     # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
     # misma carpeta no tengamos archivos duplicados
-    archivo = paste(.id, archivo, sep = "_"),
+    #archivo = paste(.id, archivo, sep = "_"),
     archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+"))
   ) %>%
   # Dos registros de Imagen_referencia_camara tienen id's duplicados, por lo que
   # los eliminamos
-   group_by(id) %>%
-       summarise_each(funs(first)) %>%
+  group_by(id) %>%
+    summarise_each(funs(first)) %>%
    ungroup() %>%
   select(id, camara_id, archivo_nombre_original, archivo)
 
@@ -815,7 +818,7 @@ Archivo_grabadora <-  inner_join(archivos_microfono, soundscape_sub,
     archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
     # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
     # misma carpeta no tengamos archivos duplicados
-    archivo = paste(.id, archivo, sep = "_"),
+    #archivo = paste(.id, archivo, sep = "_"),
     archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+")),
     es_audible = ifelse(type_soundscape == 1, "T", "F")
   ) %>%
@@ -840,7 +843,7 @@ Imagen_referencia_microfonos <- archivos_microfono_ref %>%
     archivo = str_extract(filename, regex("[[:word:]]+\\.[[:word:]]+")),
     # Estamos cambiando el nombre del archivo para que cuando agrupemos en una
     # misma carpeta no tengamos archivos duplicados
-    archivo = paste(.id, archivo, sep = "_"),
+    #archivo = paste(.id, archivo, sep = "_"),
     archivo_nombre_original = str_extract(old_filename, regex("[[:word:]]+\\.[[:word:]]+"))
   ) %>%
   select(id, grabadora_id, archivo_nombre_original, archivo)
@@ -881,6 +884,21 @@ dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_r
 dbDisconnect(base_output)
 ```
 
+### Creando lista con nombres de archivos
+
+```{r}
+archivos <- c(
+  Archivo_especie_invasora$archivo,
+  Archivo_huella_excreta$archivo,
+  Archivo_camara$archivo,
+  Imagen_referencia_camara$archivo,
+  Archivo_grabadora$archivo,
+  Imagen_referencia_microfonos$archivo)
+
+write.table(archivos, file = "../datos/adicionales/nombres_archivos_snmb.csv", 
+  sep = ",", row.names = FALSE)
+```
+
 Observaciones en camara_id:
 
         id camara_id         archivo_nombre_original
@@ -891,6 +909,7 @@ Observaciones en camara_id:
 38 135000_24465_S3_CTR_20140703_3.JPG
 
 
+<<<<<<< HEAD
 ### Copiar imágenes, grabaciones y videos a carpetas
 
 Imágenes:
@@ -1015,3 +1034,8 @@ Observaciones en camara_id:
 38 135000_24465_S3_CTR_20140703_3.JPG
 
 
+=======
+#Videos (no se copió ninguno) porque no tienen camera_id:
+#videos <- archivos_camara$filename %in% grep(".AVI", archivos_camara$filename, value = TRUE)
+#archivos_camara[videos,]
+>>>>>>> 6fa2ae1ce6a9be673a5fa8ed7ce41214f869ee13
