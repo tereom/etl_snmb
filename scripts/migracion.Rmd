@@ -36,10 +36,10 @@ bases_rutas <- list.files(path = dir_j,
 bases_snmb <- bases_rutas[grep("resources/db/snmb.db", bases_rutas, invert = F)]
 basename(bases_snmb)
 
-write.table(bases_snmb, file = "../datos/adicionales/rutas_bases_snmb.csv", 
-  sep = ",")
-# copiamos a carpeta local
+#write.table(bases_snmb, file = "../datos/adicionales/rutas_bases_snmb.csv", 
+#  sep = ",")
 
+# copiamos a carpeta local
 copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
   # dir_j: directorio (con nombre archivo) donde se ubica la base a copiar
   # dir_local: directorio (sin nombre de archivo) donde se copiará la base
@@ -49,9 +49,13 @@ copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
     to = paste(dir_local, "/", id_db, "_", basename(dir_j_archivo), sep = ""))
 }
 
+# snmb_id <- sapply(1:length(bases_snmb), function(i) 
+#   copiaRenombra(bases_snmb[i], 
+#   "../datos/bases_snmb_p", 1000*i))
+
 snmb_id <- sapply(1:length(bases_snmb), function(i) 
   copiaRenombra(bases_snmb[i], 
-  "../datos/bases_snmb_p", 1000*i))
+  "../datos/bases_snmb_p", 100*i))
 ```
 
 
@@ -90,7 +94,7 @@ conglomerado <- conglomerado_tabs %>%
     # joins para obtener las llaves foráneas, ya que las conocemos de antemano.
     ) %>%
   group_by(name) %>%
-    # Como hay bases de datos distintas con intersecciones no vacías, al agrupar,
+    # Como hay bases de datos distintas con intersecciones no vacías, al agrupar
     # nos quedamos con el primer registro de cada conglomerado encontrado
     summarise_each(funs(first)) %>%
   ungroup() %>%
@@ -153,7 +157,8 @@ Conglomerado_muestra <- conglomerado %>%
     monitoreo_tipo = "SAC-MOD", 
     vegetacion_tipo = NA_character_, 
     perturbado = NA,
-    comentario = comment) %>%
+    comentario = comment
+    ) %>%
   # los campos se deben seleccionar en el orden en el que serán insertados
   select(id, nombre, fecha_visita, predio, compania, tipo, estado, municipio,
     tenencia, uso_suelo_tipo, monitoreo_tipo, vegetacion_tipo, perturbado,
@@ -255,7 +260,7 @@ Tablas a exportar
 
 ```{r}
 Archivo_especie_invasora <- archivos_invasora %>%
-  dplyr::mutate(
+  mutate(
     especie_invasora_id = invaders_id,
     archivo_nombre_original = str_extract(old_filename, 
       stringr::regex("[[:word:]]+\\.[[:word:]]+")),
@@ -477,8 +482,8 @@ Camara = trap\_camara + equip\_camara
 2. Unimos con los ids de sitios usando la variable conglomerate_id.
 
 ```{r}
-# Tabla para localizar "sitio_muestra_id" de una cámara, por medio de "conglomerate_id"
-# y "location_camera", 
+# Tabla para localizar "sitio_muestra_id" de una cámara, por medio de 
+# "conglomerate_id" y "location_camera"
 sitios_cgls <- select(Sitio_muestra, sitio_muestra_id = id, 
   conglomerate_id = conglomerado_muestra_id, sitio_numero) %>%
   mutate(
@@ -638,9 +643,9 @@ Imagen_referencia_camara <- archivos_camara_ref %>%
   ) %>%
   # Dos registros de Imagen_referencia_camara tienen id's duplicados, por lo que
   # los eliminamos
-#   group_by(id) %>%
-#     summarise_each(funs(first)) %>%
-#   ungroup() %>%
+   group_by(id) %>%
+       summarise_each(funs(first)) %>%
+   ungroup() %>%
   select(id, camara_id, archivo_nombre_original, archivo)
 
 rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs, 
@@ -654,7 +659,6 @@ rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs,
 ### Grabadora
 
 ```{r}
-
 equipo_tabs <- ldply(bases_rutas, leerDbTab, "equip_microphone")
 archivos_microfono_ref_tabs <- ldply(bases_rutas, leerDbTab, "files_microphone_ref")
 archivos_microfono_tabs <- ldply(bases_rutas, leerDbTab, "files_soundscape_camera")
@@ -870,7 +874,7 @@ dbWriteTable(base_output, "Archivo_camara", as.data.frame(Archivo_camara), overw
 dbWriteTable(base_output, "Imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE)
 
 dbWriteTable(base_output, "Grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora[1:100000,]), overwrite = FALSE, append = TRUE)
 dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE)
 
 #dbCommit(base_output)
@@ -934,4 +938,80 @@ rutas_avi_3 <- unique(rutas_avi_3)
 fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
 sum(!fallas)
 ```
+
+Arreglando Ids
+
+```{r}
+# creamos una nueva id, de tal manera que sea incrementos de 1,2, 3...
+
+# Los siguientes ids se arreglan de manera automática por no ser llaves foráneas
+Archivo_especie_invasora$id <- 1:length(Archivo_especie_invasora$id)
+Archivo_huella_excreta$id <- 1:length(Archivo_huella_excreta$id)
+Imagen_referencia_camara$id <- 1:length(Imagen_referencia_camara$id)
+
+Archivo_camara$id <- 1:length(Archivo_camara$id)
+Imagen_referencia_camara$id <- 1:length(Imagen_referencia_camara$id)
+
+Archivo_grabadora$id <- 1:length(Archivo_grabadora$id)
+Imagen_referencia_microfonos$id <- 1:length(Imagen_referencia_microfonos$id)
+
+# Para aquellos ids que sirven como laves foráneas creamos catálogos
+cat_cgl_ids <- data.frame(id = unique(Conglomerado_muestra$id)) 
+cat_cgl_ids$id_sec <- 1:length(cat_cgl_ids$id)
+
+cat_transecto_ei_ids <- data.frame(
+  id = unique(Transecto_especies_invasoras_muestra$id))
+cat_transecto_ei_ids$id_sec <- 1:length(cat_transecto_ei_ids$id)
+
+cat_transecto_he_ids <- data.frame(
+  id = unique(Transecto_huellas_excretas_muestra$id))
+cat_transecto_he_ids$id_sec <- 1:length(cat_transecto_hs_ids$id)
+
+
+
+```
+
+
+
+```{r}
+library(RPostgreSQL)
+drv <- dbDriver("PostgreSQL")
+base_output <- dbConnect(drv = drv, dbname = "snmb_piloto", port = 5432,
+  host = "localhost", 
+  user = "mortiz", password = "bowles")
+
+dbWriteTable(base_output, "conglomerado_muestra", 
+  as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE, row.names = 0)
+
+#dbCommit(base_output)
+dbDisconnect(base_output)
+```
+
+Observaciones en camara_id:
+
+        id camara_id         archivo_nombre_original
+34 1320001   1320001 23278_S3_CTR_20140626_01_01.JPG
+38 1350001   1350001 24465_S3_CTR_20140703_01_01.JPG
+                              archivo
+34 132000_23278_S3_CTR_20140626_3.JPG
+38 135000_24465_S3_CTR_20140703_3.JPG
+
 
