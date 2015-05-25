@@ -122,8 +122,7 @@ bases_snmb[109:127]
 **Falta buscar niveles conglomerate_type y property de cliente Thilo**
 
 ```{r}
-# Importando el catálogo de municipio, ya que algunos registros contienen el muni-
-# cipio numéricamente
+# Importando el catálogo de municipio, ya que algunos registros contienen el municipio numéricamente
 cat_municipio <- unique(read.csv("../datos/adicionales/municipios.csv", 
   colClasses = "character", header = TRUE))
 
@@ -968,7 +967,6 @@ Arreglando Ids
 # Los siguientes ids se arreglan de manera automática por no ser llaves foráneas
 Archivo_especie_invasora$id <- 1:length(Archivo_especie_invasora$id)
 Archivo_huella_excreta$id <- 1:length(Archivo_huella_excreta$id)
-Imagen_referencia_camara$id <- 1:length(Imagen_referencia_camara$id)
 
 Archivo_camara$id <- 1:length(Archivo_camara$id)
 Imagen_referencia_camara$id <- 1:length(Imagen_referencia_camara$id)
@@ -976,8 +974,9 @@ Imagen_referencia_camara$id <- 1:length(Imagen_referencia_camara$id)
 Archivo_grabadora$id <- 1:length(Archivo_grabadora$id)
 Imagen_referencia_microfonos$id <- 1:length(Imagen_referencia_microfonos$id)
 
-# Para aquellos ids que sirven como laves foráneas creamos catálogos
-cat_cgl_ids <- data.frame(id = unique(Conglomerado_muestra$id)) 
+# Para aquellos ids que sirven como llaves foráneas creamos catálogos
+cat_cgl_ids <- data.frame(
+  id = unique(Conglomerado_muestra$id)) 
 cat_cgl_ids$id_sec <- 1:length(cat_cgl_ids$id)
 
 cat_transecto_ei_ids <- data.frame(
@@ -988,8 +987,17 @@ cat_transecto_he_ids <- data.frame(
   id = unique(Transecto_huellas_excretas_muestra$id))
 cat_transecto_he_ids$id_sec <- 1:length(cat_transecto_hs_ids$id)
 
+cat_camara_ids <- data.frame(
+  id = unique(Camara$id))
+cat_camara_ids$id_sec <- 1:length(cat_camara_ids$id)
 
+cat_grabadora_ids <- data.frame(
+  id = unique(Grabadora$id))
+cat_grabadora_ids$id_sec <- 1: length(cat_grabadora_ids$id)
 
+Camara <- Camara %>%
+  inner_join(cat_camara_ids, by ="id") %>%
+  mutate
 ```
 
 
@@ -1040,4 +1048,3 @@ Observaciones en camara_id:
 #Videos (no se copió ninguno) porque no tienen camera_id:
 #videos <- archivos_camara$filename %in% grep(".AVI", archivos_camara$filename, value = TRUE)
 #archivos_camara[videos,]
->>>>>>> 6fa2ae1ce6a9be673a5fa8ed7ce41214f869ee13
