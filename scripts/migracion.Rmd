@@ -46,18 +46,19 @@ write.table(bases_snmb, file = "../datos/adicionales/rutas_bases_snmb.csv",
   sep = ",")
 
 # copiamos a carpeta local
-copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
+copiaRenombra <- function(dir_j_archivo, dir_local, id_db, nombre){
   # dir_j: directorio (con nombre archivo) donde se ubica la base a copiar
   # dir_local: directorio (sin nombre de archivo) donde se copiará la base
   # id_db: id numérico que se utilizará para distinguir bases en migración
+  # nombre: string con el nombre común que compartirán las bases
   file.copy(dir_j_archivo, dir_local,  overwrite = FALSE)
   file.rename(from = paste(dir_local, basename(dir_j_archivo), sep = "/"), 
-    to = paste(dir_local, "/", id_db, "_", "snmb.db", sep = ""))
+    to = paste(dir_local, "/", id_db, "_", nombre, sep = ""))
 }
 
 snmb_id <- sapply(1:length(bases_snmb), function(i) 
   copiaRenombra(bases_snmb[i], 
-    "../datos/bases_snmb", 1000*i))
+    "../datos/bases_snmb", 1000*i, "snmb.db"))
 
 ```
 
@@ -1139,6 +1140,41 @@ dbWriteTable(base_output, "imagen_referencia_microfonos", as.data.frame(Imagen_r
 dbDisconnect(base_output)
 ```
 
+###Copiando las bases del cliente nuevo a una carpeta para fusionarlas con la base anterior
+
+```{r}
+dir_j = "/Volumes/sacmod"
+
+#bases del nuevo cliente:
+bases_web2py_rutas <- list.files(path = dir_j,
+recursive = TRUE, full.names = TRUE, pattern ="storage\\.sqlite$")
+
+#seleccionando bases
+
+bases_web2py_rutas_2<-c(
+  "/Volumes/sacmod/data_10_03_2015/SARMOD_CONANP_ENTREGA_02032015/SARMOD_CONANP_ENTREGA_TEHCUI_02032015/ENTREGA_1/CLIENTE_SNMB_1/CLIENTE_SNMB_1/applications/init/databases/storage.sqlite",
+  "/Volumes/sacmod/data_10_03_2015/SARMOD_OSC_ENTREGA_02032015/SARMOD_FMCN_ENTREGA_ESPACIOAUTONOMO_02032015/ENTREGA_1/CLIENTE_SNMB_#1/CLIENTE_SNMB_1/applications/init/databases/storage.sqlite",
+  "/Volumes/sacmod/sarmod_05052015/cliente_snmb/applications/init/databases/storage.sqlite",
+  "/Volumes/sacmod/SARMOD_CONANP_ENTREGA_1_26032015/SARMOD_CONANP_DONMARTIN_24032015/ENTREGA_1/CLIENTE_SNMB_1 conglomerado/cliente_snmb/applications/init/databases/storage.sqlite",
+  "/Volumes/sacmod/SARMOD_CONANP_ENTREGA_1_26032015/SARMOD_CONANP_RBMM_16032015/ENTREGA_1/CLIENTE_SNMB_1 conglomerado/Cliente_snmb/applications/init/databases/storage.sqlite",
+  "/Volumes/sacmod/SARMOD_CONANP_ENTREGA_1_26032015/SARMOD_CONANP_SSPM_10032015/ENTREGA_1/CLIENTE_SNMB_1 conglomerado/Cliente_snmb/applications/init/databases/storage.sqlite",
+  )
+
+# copiamos a carpeta local
+copiaRenombra <- function(dir_j_archivo, dir_local, id_db, nombre){
+  # dir_j: directorio (con nombre archivo) donde se ubica la base a copiar
+  # dir_local: directorio (sin nombre de archivo) donde se copiará la base
+  # id_db: id numérico que se utilizará para distinguir bases en migración
+  # nombre: string con el nombre común que compartirán las bases
+  file.copy(dir_j_archivo, dir_local,  overwrite = FALSE)
+  file.rename(from = paste(dir_local, basename(dir_j_archivo), sep = "/"), 
+    to = paste(dir_local, "/", id_db, "_", nombre, sep = ""))
+}
+
+snmb_id <- sapply(1:length(bases_web2py_rutas_2), function(i) 
+  copiaRenombra(bases_web2py_rutas_2[i], 
+    "../datos/bases_web2py_snmb", i, "storage.sqlite"))
+```
 
 =======
 #Videos (no se copió ninguno) porque no tienen camera_id:
