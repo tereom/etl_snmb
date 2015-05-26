@@ -1004,8 +1004,14 @@ Archivo_grabadora <- Archivo_grabadora %>%
   mutate(grabadora_id = id_sec) %>%
   select(-id_sec)
 glimpse(Archivo_grabadora)
+
+rm(cat_camara_ids, cat_cgl_ids, cat_ei_ids, cat_grabadora_ids, cat_he_ids,
+  cat_transecto_ei_ids, cat_transecto_he_ids)
 ```
 
+```{r}
+save.image(file = "../datos/tablas_finales.Rdata")
+```
 ### Escribiendo tablas en la base de datos SQLite
 
 ```{r}
@@ -1026,7 +1032,7 @@ dbWriteTable(base_output, "Archivo_camara", as.data.frame(Archivo_camara), overw
 dbWriteTable(base_output, "Imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE)
 
 dbWriteTable(base_output, "Grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora[1:100000,]), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE)
 dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE)
 
 #dbCommit(base_output)
@@ -1132,15 +1138,6 @@ dbWriteTable(base_output, "imagen_referencia_microfonos", as.data.frame(Imagen_r
 #dbCommit(base_output)
 dbDisconnect(base_output)
 ```
-
-Observaciones en camara_id:
-
-        id camara_id         archivo_nombre_original
-34 1320001   1320001 23278_S3_CTR_20140626_01_01.JPG
-38 1350001   1350001 24465_S3_CTR_20140703_01_01.JPG
-                              archivo
-34 132000_23278_S3_CTR_20140626_3.JPG
-38 135000_24465_S3_CTR_20140703_3.JPG
 
 
 =======
