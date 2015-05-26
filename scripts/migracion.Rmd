@@ -1013,7 +1013,7 @@ rm(cat_camara_ids, cat_cgl_ids, cat_ei_ids, cat_grabadora_ids, cat_he_ids,
 ```{r}
 save.image(file = "../datos/tablas_finales.Rdata")
 ```
-### Escribiendo tablas en la base de datos SQLite
+### Escribiendo tablas en las bases de datos SQLite y PostgreSQL
 
 ```{r}
 base_output <- dbConnect(RSQLite::SQLite(), "../datos/bases_salida/base_output.db")
@@ -1035,6 +1035,38 @@ dbWriteTable(base_output, "Imagen_referencia_camara", as.data.frame(Imagen_refer
 dbWriteTable(base_output, "Grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE)
 dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE)
 dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE)
+
+#dbCommit(base_output)
+dbDisconnect(base_output)
+```
+
+```{r}
+library(RPostgreSQL)
+drv <- dbDriver("PostgreSQL")
+base_output <- dbConnect(drv = drv, dbname = "snmb_fusion_1", port = 5432,
+  host = "localhost", 
+  user = "fpardo", password = "")
+
+dbWriteTable(base_output, "conglomerado_muestra", 
+  as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE, row.names = 0)
 
 #dbCommit(base_output)
 dbDisconnect(base_output)
@@ -1104,42 +1136,6 @@ fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_pi
 sum(!fallas)
 ```
 
-
-
-
-
-```{r}
-library(RPostgreSQL)
-drv <- dbDriver("PostgreSQL")
-base_output <- dbConnect(drv = drv, dbname = "snmb_piloto", port = 5432,
-  host = "localhost", 
-  user = "mortiz", password = "bowles")
-
-dbWriteTable(base_output, "conglomerado_muestra", 
-  as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
-
-dbWriteTable(base_output, "sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
-
-dbWriteTable(base_output, "transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
-
-dbWriteTable(base_output, "transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
-
-dbWriteTable(base_output, "camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE, row.names = 0)
-
-dbWriteTable(base_output, "grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE, row.names = 0)
-
-#dbCommit(base_output)
-dbDisconnect(base_output)
-```
-
 ###Copiando las bases del cliente nuevo a una carpeta para fusionarlas con la base anterior
 
 ```{r}
@@ -1180,3 +1176,4 @@ snmb_id <- sapply(1:length(bases_web2py_rutas_2), function(i)
 #Videos (no se copió ninguno) porque no tienen camera_id:
 #videos <- archivos_camara$filename %in% grep(".AVI", archivos_camara$filename, value = TRUE)
 #archivos_camara[videos,]
+
