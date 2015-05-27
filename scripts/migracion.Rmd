@@ -47,19 +47,19 @@ write.table(bases_snmb, file = "../datos/adicionales/rutas_bases_snmb.csv",
   sep = ",")
 
 # copiamos a carpeta local
-copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
+copiaRenombra <- function(dir_j_archivo, dir_local, id_db, nombre){
   # dir_j: directorio (con nombre archivo) donde se ubica la base a copiar
   # dir_local: directorio (sin nombre de archivo) donde se copiará la base
   # id_db: id numérico que se utilizará para distinguir bases en migración
+  # nombre: string con el nombre común que compartirán las bases
   file.copy(dir_j_archivo, dir_local,  overwrite = FALSE)
   file.rename(from = paste(dir_local, basename(dir_j_archivo), sep = "/"), 
-    to = paste(dir_local, "/", id_db, "_", "snmb.db", sep = ""))
+    to = paste(dir_local, "/", id_db, "_", nombre, sep = ""))
 }
 
-# snmb_id <- sapply(1:length(bases_snmb), function(i) 
-#   copiaRenombra(bases_snmb[i], 
-#   "../datos/bases_snmb_2", 1000*i))
-
+snmb_id <- sapply(1:length(bases_snmb), function(i) 
+  copiaRenombra(bases_snmb[i], 
+    "../datos/bases_snmb", 1000*i, "snmb.db"))
 
 ```
 
@@ -124,8 +124,7 @@ bases_snmb[109:127]
 **Falta buscar niveles conglomerate_type y property de cliente Thilo**
 
 ```{r}
-# Importando el catálogo de municipio, ya que algunos registros contienen el muni-
-# cipio numéricamente
+# Importando el catálogo de municipio, ya que algunos registros contienen el municipio numéricamente
 cat_municipio <- unique(read.csv("../datos/adicionales/municipios.csv", 
   colClasses = "character", header = TRUE))
 
@@ -859,107 +858,7 @@ rm(archivos_microfono, archivos_microfono_ref, archivos_microfono_ref_tabs,
 # Imagen_referencia_grabadora
 ```
 
-### Escribiendo tablas en la base de datos
-
-```{r}
-base_output <- dbConnect(RSQLite::SQLite(), "../datos/bases_salida/base_output.db")
-dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE)
-
-dbWriteTable(base_output, "Transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE)
-
-dbWriteTable(base_output, "Transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE)
-
-dbWriteTable(base_output, "Camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE)
-
-dbWriteTable(base_output, "Grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora[1:100000,]), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE)
-
-#dbCommit(base_output)
-dbDisconnect(base_output)
-```
-
-### Creando lista con nombres de archivos
-
-```{r}
-archivos <- c(
-  Archivo_especie_invasora$archivo,
-  Archivo_huella_excreta$archivo,
-  Archivo_camara$archivo,
-  Imagen_referencia_camara$archivo,
-  Archivo_grabadora$archivo,
-  Imagen_referencia_microfonos$archivo)
-
-write.table(archivos, file = "../datos/adicionales/nombres_archivos_snmb.csv", 
-  sep = ",", row.names = FALSE)
-```
-
-Observaciones en camara_id:
-
-        id camara_id         archivo_nombre_original
-34 1320001   1320001 23278_S3_CTR_20140626_01_01.JPG
-38 1350001   1350001 24465_S3_CTR_20140703_01_01.JPG
-                              archivo
-34 132000_23278_S3_CTR_20140626_3.JPG
-38 135000_24465_S3_CTR_20140703_3.JPG
-
-
-### Copiar imágenes, grabaciones y videos a carpetas
-
-Imágenes:
-14
-```{r}
-dir_j = "/Volumes/sacmod"
-
-# en Windows
-dir_j = "//madmexservices.conabio.gob.mx/sacmod/"
-
-# jpg hay errores por caracteres especiales en las rutas
-rutas_jpg <- list.files(path = dir_j, 
-  recursive = TRUE, full.names = TRUE, pattern = "\\.jpg$", ignore.case = TRUE)
-
-rutas_wav <- list.files(path = dir_j, 
-  recursive = TRUE, full.names = TRUE, pattern = "\\.wav$")
-
-rutas_avi <- list.files(path = dir_j, 
-  recursive = TRUE, full.names = TRUE, pattern = "\\.AVI$")
-
-archivos_copiar <- read.csv("../datos/adicionales/nombres_archivos_snmb.csv",
-  header = TRUE)
-
-
-rutas_jpg_2 <- str_extract(rutas_jpj, regex("[[:word:]]+\\.[[:word:]]+$"))
-rutas_jpg_3 <- rutas_jpg[rutas_jpg_2 %in% archivos_copiar$x]
-
-fallas <- file.copy(rutas_jpg_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/imagenes")
-sum(!fallas)
-
-rutas_wav <- list.files(path = dir_j, 
-  recursive = TRUE, full.names = TRUE, pattern = "\\.wav$")
-
-rutas_wav_2 <- str_extract(rutas_wav, regex("[[:word:]]+\\.[[:word:]]+$"))
-rutas_wav_3 <- rutas_wav[rutas_wav_2 %in% archivos_copiar$x]
-rutas_wav_3 <- unique(rutas_wav_3)
-
-fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
-sum(!fallas)
-
-rutas_avi_2 <- str_extract(rutas_avi, regex("[[:word:]]+\\.[[:word:]]+$"))
-rutas_avi_3 <- rutas_wav[rutas_avi_2 %in% archivos_copiar$x]
-rutas_avi_3 <- unique(rutas_avi_3)
-
-fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
-sum(!fallas)
-```
-
-Arreglando Ids
+###Arreglando Ids
 
 ```{r}
 # creamos una nueva id, de tal manera que sea incrementos de 1,2, 3...
@@ -974,8 +873,9 @@ Imagen_referencia_camara$id <- 1:length(Imagen_referencia_camara$id)
 Archivo_grabadora$id <- 1:length(Archivo_grabadora$id)
 Imagen_referencia_microfonos$id <- 1:length(Imagen_referencia_microfonos$id)
 
-# Para aquellos ids que sirven como laves foráneas creamos catálogos
-cat_cgl_ids <- data.frame(id = unique(Conglomerado_muestra$id)) 
+# Para aquellos ids que sirven como llaves foráneas creamos catálogos
+cat_cgl_ids <- data.frame(
+  id = unique(Conglomerado_muestra$id)) 
 cat_cgl_ids$id_sec <- 1:length(cat_cgl_ids$id)
 
 cat_transecto_ei_ids <- data.frame(
@@ -1106,16 +1006,47 @@ Archivo_grabadora <- Archivo_grabadora %>%
   mutate(grabadora_id = id_sec) %>%
   select(-id_sec)
 glimpse(Archivo_grabadora)
+
+rm(cat_camara_ids, cat_cgl_ids, cat_ei_ids, cat_grabadora_ids, cat_he_ids,
+  cat_transecto_ei_ids, cat_transecto_he_ids)
 ```
 
+```{r}
+save.image(file = "../datos/tablas_finales.Rdata")
+```
+### Escribiendo tablas en las bases de datos SQLite y PostgreSQL
 
+```{r}
+base_output <- dbConnect(RSQLite::SQLite(), "../datos/bases_salida/base_output.db")
+dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE)
+
+dbWriteTable(base_output, "Transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE)
+
+dbWriteTable(base_output, "Transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE)
+
+dbWriteTable(base_output, "Camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE)
+
+dbWriteTable(base_output, "Grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE)
+
+#dbCommit(base_output)
+dbDisconnect(base_output)
+```
 
 ```{r}
 library(RPostgreSQL)
 drv <- dbDriver("PostgreSQL")
-base_output <- dbConnect(drv = drv, dbname = "snmb_piloto", port = 5432,
+base_output <- dbConnect(drv = drv, dbname = "snmb_fusion_1", port = 5432,
   host = "localhost", 
-  user = "mortiz", password = "bowles")
+  user = "fpardo", password = "")
 
 dbWriteTable(base_output, "conglomerado_muestra", 
   as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
@@ -1142,17 +1073,108 @@ dbWriteTable(base_output, "imagen_referencia_microfonos", as.data.frame(Imagen_r
 dbDisconnect(base_output)
 ```
 
-Observaciones en camara_id:
+### Creando lista con nombres de archivos
 
-        id camara_id         archivo_nombre_original
-34 1320001   1320001 23278_S3_CTR_20140626_01_01.JPG
-38 1350001   1350001 24465_S3_CTR_20140703_01_01.JPG
-                              archivo
-34 132000_23278_S3_CTR_20140626_3.JPG
-38 135000_24465_S3_CTR_20140703_3.JPG
+Esta lista se utrilizará para buscar los archivos en la estructura de entregas
+guardada en el cluster.
 
+```{r}
+archivos <- c(
+  Archivo_especie_invasora$archivo,
+  Archivo_huella_excreta$archivo,
+  Archivo_camara$archivo,
+  Imagen_referencia_camara$archivo,
+  Archivo_grabadora$archivo,
+  Imagen_referencia_microfonos$archivo)
+
+write.table(archivos, file = "../datos/adicionales/nombres_archivos_snmb.csv", 
+  sep = ",", row.names = FALSE)
+```
+
+### Copiar imágenes, grabaciones y videos a carpetas
+
+```{r}
+dir_j = "/Volumes/sacmod"
+
+# en Windows
+#dir_j = "//madmexservices.conabio.gob.mx/sacmod/"
+
+# jpg hay errores por caracteres especiales en las rutas
+rutas_jpg <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.jpg$", ignore.case = TRUE)
+
+rutas_wav <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.wav$")
+
+rutas_avi <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.AVI$")
+
+archivos_copiar <- read.csv("../datos/adicionales/nombres_archivos_snmb.csv",
+  header = TRUE)
+
+
+rutas_jpg_2 <- str_extract(rutas_jpg, regex("[[:word:]]+\\.[[:word:]]+$"))
+rutas_jpg_3 <- rutas_jpg[rutas_jpg_2 %in% archivos_copiar$x]
+
+fallas <- file.copy(rutas_jpg_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/imagenes")
+sum(!fallas)
+
+rutas_wav <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.wav$")
+
+rutas_wav_2 <- str_extract(rutas_wav, regex("[[:word:]]+\\.[[:word:]]+$"))
+rutas_wav_3 <- rutas_wav[rutas_wav_2 %in% archivos_copiar$x]
+rutas_wav_3 <- unique(rutas_wav_3)
+
+fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
+sum(!fallas)
+
+rutas_avi_2 <- str_extract(rutas_avi, regex("[[:word:]]+\\.[[:word:]]+$"))
+rutas_avi_3 <- rutas_wav[rutas_avi_2 %in% archivos_copiar$x]
+rutas_avi_3 <- unique(rutas_avi_3)
+
+fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
+sum(!fallas)
+```
+
+###Copiando las bases del cliente nuevo a una carpeta para fusionarlas con la base anterior
+
+```{r}
+dir_j = "/Volumes/sacmod"
+
+#bases del nuevo cliente:
+bases_web2py_rutas <- list.files(path = dir_j,
+recursive = TRUE, full.names = TRUE, pattern ="storage\\.sqlite$")
+
+#seleccionando bases
+
+bases_web2py_rutas_2<-c(
+  "/Volumes/sacmod/data_10_03_2015/SARMOD_CONANP_ENTREGA_02032015/SARMOD_CONANP_ENTREGA_TEHCUI_02032015/ENTREGA_1/CLIENTE_SNMB_1/CLIENTE_SNMB_1/applications/init/databases/storage.sqlite",
+  "/Volumes/sacmod/data_10_03_2015/SARMOD_OSC_ENTREGA_02032015/SARMOD_FMCN_ENTREGA_ESPACIOAUTONOMO_02032015/ENTREGA_1/CLIENTE_SNMB_#1/CLIENTE_SNMB_1/applications/init/databases/storage.sqlite",
+  "/Volumes/sacmod/sarmod_05052015/cliente_snmb/applications/init/databases/storage.sqlite",
+  "/Volumes/sacmod/SARMOD_CONANP_ENTREGA_1_26032015/SARMOD_CONANP_DONMARTIN_24032015/ENTREGA_1/CLIENTE_SNMB_1 conglomerado/cliente_snmb/applications/init/databases/storage.sqlite",
+  "/Volumes/sacmod/SARMOD_CONANP_ENTREGA_1_26032015/SARMOD_CONANP_RBMM_16032015/ENTREGA_1/CLIENTE_SNMB_1 conglomerado/Cliente_snmb/applications/init/databases/storage.sqlite",
+  "/Volumes/sacmod/SARMOD_CONANP_ENTREGA_1_26032015/SARMOD_CONANP_SSPM_10032015/ENTREGA_1/CLIENTE_SNMB_1 conglomerado/Cliente_snmb/applications/init/databases/storage.sqlite",
+  )
+
+# copiamos a carpeta local
+copiaRenombra <- function(dir_j_archivo, dir_local, id_db, nombre){
+  # dir_j: directorio (con nombre archivo) donde se ubica la base a copiar
+  # dir_local: directorio (sin nombre de archivo) donde se copiará la base
+  # id_db: id numérico que se utilizará para distinguir bases en migración
+  # nombre: string con el nombre común que compartirán las bases
+  file.copy(dir_j_archivo, dir_local,  overwrite = FALSE)
+  file.rename(from = paste(dir_local, basename(dir_j_archivo), sep = "/"), 
+    to = paste(dir_local, "/", id_db, "_", nombre, sep = ""))
+}
+
+snmb_id <- sapply(1:length(bases_web2py_rutas_2), function(i) 
+  copiaRenombra(bases_web2py_rutas_2[i], 
+    "../datos/bases_web2py_snmb", i, "storage.sqlite"))
+```
 
 =======
 #Videos (no se copió ninguno) porque no tienen camera_id:
 #videos <- archivos_camara$filename %in% grep(".AVI", archivos_camara$filename, value = TRUE)
 #archivos_camara[videos,]
+
