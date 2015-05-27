@@ -1,22 +1,19 @@
----
-title: "Migracion de primera versión"
-output: html_document
----
 
-Supuestos:
+# Migracion de primera versión
 
-1. Los clientes finales están almacenados en carpetas de la forma 
-resources/db/snmb.db, esto supone que los clientes en archives/db/snmb.db son
-respaldos.
+# Supuestos:
+# 
+# 1. Los clientes finales están almacenados en carpetas de la forma 
+# resources/db/snmb.db, esto supone que los clientes en archives/db/snmb.db son
+# respaldos.
+# 
+# 2. Cada vez que encontramos un conglomerado en un cliente final, este 
+# se ingresó completo, implica que si encontramos un mismo conglomerado en 
+# más de un cliente estos registros serán idénticos.
+# 
+# Cargamos los paquetes, RSQLite nos sirve para escribir las tablas en una base
+# de datos Sqlite.
 
-2. Cada vez que encontramos un conglomerado en un cliente final, este 
-se ingresó completo, implica que si encontramos un mismo conglomerado en 
-más de un cliente estos registros serán idénticos.
-
-Cargamos los paquetes, RSQLite nos sirve para escribir las tablas en una base
-de datos Sqlite.
-
-```{r, message=FALSE}
 setwd("../scripts")
 
 library(plyr)
@@ -24,11 +21,9 @@ library(tidyr)
 library(stringr)
 library(RSQLite)
 library(dplyr)
-```
 
-Copiamos los archivos de J a una carpeta local.
 
-```{r}
+### Copiamos los archivos de J a una carpeta local.
 dir_j = "/Volumes/sacmod"
 
 # Obtenemos rutas de bases de la forma snmb.db localizadas en dir_j
@@ -60,28 +55,20 @@ copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
 #   copiaRenombra(bases_snmb[i], 
 #   "../datos/bases_snmb_2", 1000*i))
 
-
-```
-
-
-
-La siguiente función lee la base de datos (dir), extrae una tabla (tabla) y 
-regresa un _data frame_ con la tabla.
-
-```{r}
+# leerDbTab: función lee la base de datos (dir), extrae una tabla (tabla) y 
+# regresa un _data frame_ con la tabla.
 leerDbTab <- function(dir, tabla){
   base_input <- src_sqlite(dir)
   tabla <- tbl(base_input, tabla)
   tabla_df <- collect(tabla)
 }
-```
 
+### Exportación de tablas
 ### conglomerates -> Conglomerado_muestra y Sitio_muestra
 
-1. Leemos las tablas de conglomerado y creamos un id utilizando la parte 
-numérica del nombre de la base de datos y la columna id de la misma.
+# 1. Leemos las tablas de conglomerado y creamos un id utilizando la parte 
+# numérica del nombre de la base de datos y la columna id de la misma.
 
-```{r}
 # Leemos las rutas de las bases de datos de entrada
 bases_rutas <- list.files(path = "../datos/bases_snmb", 
   recursive = TRUE, full.names = TRUE, pattern = "\\.db$")
@@ -104,26 +91,15 @@ conglomerado <- conglomerado_tabs %>%
     summarise_each(funs(first)) %>%
   ungroup() %>%
   select(-.id) # eliminamos la columna auxiliar .id
-```
 
-Veamos algunos diagnósticos
-
-```{r}
+# Veamos algunos diagnósticos
 table(conglomerado_tabs$name)[table(conglomerado_tabs$name) > 1]
 # hay casos en los que tenemos un mismo conglomeradoo en 131 clientes (8745, 8917)
-
 subset(conglomerado_tabs, name=="8917")
-
 bases_snmb[109:127]
-```
 
+## 2. Separamos en las dos tablas Conglomerado\_muestra y Sitio\_muestra
 
-
-2. Separamos en las dos tablas Conglomerado\_muestra y Sitio\_muestra
-
-**Falta buscar niveles conglomerate_type y property de cliente Thilo**
-
-```{r}
 # Importando el catálogo de municipio, ya que algunos registros contienen el muni-
 # cipio numéricamente
 cat_municipio <- unique(read.csv("../datos/adicionales/municipios.csv", 
@@ -218,22 +194,15 @@ Sitio_muestra <- sitio %>%
 
 rm("cat_municipio", "conglomerado", "conglomerado_tabs", "sitio", "variables",
   "separarSitios")
-```
 
 
+#### invaders, file_invasores -> Transecto_especie_invasora, 
+# Especie_invasora, Archivo_Especie_invasora
 
-
-
-#### invaders, file_invasores -> Transecto_especie_invasora, Especie_invasora, Archivo_Especie_invasora
-
-Filtramos para únicamente tener registros asociados a los conglomerados en la 
-tabla Conglomerado_muestra.
-
-```{r}
+# Filtramos para únicamente tener registros asociados a los conglomerados en la 
+# tabla Conglomerado_muestra.
 invasora_tabs <- ldply(bases_rutas, leerDbTab, "invaders")
-
 archivos_invasora_tabs <- ldply(bases_rutas, leerDbTab, "files_invasores")
-
 # creamos nuevos ids pegando id base de datos con ids de tabla
 invasora <- invasora_tabs %>%
   mutate(
@@ -257,13 +226,7 @@ archivos_invasora <- archivos_invasora_tabs %>%
   # Como se filtró para obtener "invasora", debemos filtrar esta tabla también
   # para mantener consistencia.
   filter(invaders_id %in% invasora$id)
-```
 
-Tablas a exportar
-**en archivo quitamos ruta?**
-**como trabajar las horas?**
-
-```{r}
 Archivo_especie_invasora <- archivos_invasora %>%
   mutate(
     especie_invasora_id = invaders_id,
@@ -336,11 +299,11 @@ Especie_invasora <- transecto_especies_invasoras %>%
 #invasora_tabs y conglomerado_fechas se utilizan para Huellas y excretas también (ver esquema).
 rm(invasora, archivos_invasora, archivos_invasora_tabs, 
   transecto_especies_invasoras)
-```
 
-#### tracks_excrements, file_tracks_excrements -> Transecto_huellas_excretas, Huella_excreta, Archivo_huella_excreta
 
-```{r}
+
+### tracks_excrements, file_tracks_excrements -> Transecto_huellas_excretas, 
+# Huella_excreta, Archivo_huella_excreta
 huella_tabs <- ldply(bases_rutas, leerDbTab, "tracks_excrements")
 archivos_huella_tabs <- ldply(bases_rutas, leerDbTab, "files_tracks_excrements")
 
@@ -367,14 +330,8 @@ archivos_huella_excreta <- archivos_huella_tabs %>%
     tracks_excrements_id = as.numeric(paste(.id, tracks_exrements_id, sep = ""))
   ) %>%
   filter(tracks_excrements_id %in% huella_excreta$id)
-```
 
-Tablas a exportar
-**en archivo quitamos ruta?**
-**como trabajar las horas?**
-**species_name en nombre comun o en nombre cientifico?**
 
-```{r}
 Archivo_huella_excreta <- archivos_huella_excreta %>%
   mutate(
     huella_excreta_id = tracks_excrements_id,
@@ -429,11 +386,10 @@ Huella_excreta <- transecto_huellas_excretas %>%
 
 rm(huella_excreta, archivos_huella_excreta, huella_tabs, archivos_huella_tabs,
   invasora_horas, invasora_tabs, conglomerado_fechas, transecto_huellas_excretas)
-```
+
+
 
 ### Cámara
-
-```{r}
 equipo_tabs <- ldply(bases_rutas, leerDbTab, "equip_camera")
 archivos_camara_ref_tabs <- ldply(bases_rutas, leerDbTab, "files_camera_ref")
 archivos_camara_tabs <- ldply(bases_rutas, leerDbTab, "files_trap_camera")
@@ -477,16 +433,14 @@ camara <- camara_tabs %>%
     # de ésta última. sin embargo, ésta restricción se hará mediante un inner join
     # a la hora de obtener la hora de inicio/término.
   select(-.id)
-```
 
-Camara = trap\_camara + equip\_camara
+# Camara = trap\_camara + equip\_camara
+# 
+# 1. Hacemos el join de tal manera que preservamos todas los renglones de camara 
+# (trap\_camara).
+# 
+# 2. Unimos con los ids de sitios usando la variable conglomerate_id.
 
-1. Hacemos el join de tal manera que preservamos todas los renglones de camara 
-(trap\_camara).
-
-2. Unimos con los ids de sitios usando la variable conglomerate_id.
-
-```{r}
 # Tabla para localizar "sitio_muestra_id" de una cámara, por medio de 
 # "conglomerate_id" y "location_camera"
 sitios_cgls <- select(Sitio_muestra, sitio_muestra_id = id, 
@@ -659,11 +613,9 @@ rm(archivos_camara, archivos_camara_ref, archivos_camara_ref_tabs,
   equipo_tabs, sitios_cgls, trap_camera_sub)
 
 #Imagen_referencia_camara[duplicated(Imagen_referencia_camara$id),]
-```
 
 ### Grabadora
 
-```{r}
 equipo_tabs <- ldply(bases_rutas, leerDbTab, "equip_microphone")
 archivos_microfono_ref_tabs <- ldply(bases_rutas, leerDbTab, "files_microphone_ref")
 archivos_microfono_tabs <- ldply(bases_rutas, leerDbTab, "files_soundscape_camera")
@@ -707,16 +659,16 @@ soundscape <- soundscape_tabs %>%
     # de ésta última. sin embargo, ésta restricción se hará mediante un inner join
     # a la hora de obtener la hora de inicio/término.
   select(-.id)
-```
 
-Grabadora = soundscape + equip\_microphone
+# 
+# Grabadora = soundscape + equip\_microphone
+# 
+# 1. Hacemos el join de tal manera que preservamos todos los renglones de grabadora 
+# (soundscape).
+# 
+# 2. Unimos con los ids de sitios usando la variable conglomerate_id.
 
-1. Hacemos el join de tal manera que preservamos todos los renglones de grabadora 
-(soundscape).
 
-2. Unimos con los ids de sitios usando la variable conglomerate_id.
-
-```{r}
 sitios_cgls <- select(Sitio_muestra, sitio_muestra_id = id, 
   conglomerate_id = conglomerado_muestra_id, sitio_numero) %>%
   mutate(
@@ -857,11 +809,9 @@ rm(archivos_microfono, archivos_microfono_ref, archivos_microfono_ref_tabs,
 
 # no hay info. para crear las tablas Archivo_referencia_microfono, 
 # Imagen_referencia_grabadora
-```
+
 
 ### Escribiendo tablas en la base de datos
-
-```{r}
 base_output <- dbConnect(RSQLite::SQLite(), "../datos/bases_salida/base_output.db")
 dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE)
 dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE)
@@ -884,11 +834,10 @@ dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_r
 
 #dbCommit(base_output)
 dbDisconnect(base_output)
-```
 
 ### Creando lista con nombres de archivos
 
-```{r}
+
 archivos <- c(
   Archivo_especie_invasora$archivo,
   Archivo_huella_excreta$archivo,
@@ -899,23 +848,12 @@ archivos <- c(
 
 write.table(archivos, file = "../datos/adicionales/nombres_archivos_snmb.csv", 
   sep = ",", row.names = FALSE)
-```
 
-Observaciones en camara_id:
 
-        id camara_id         archivo_nombre_original
-34 1320001   1320001 23278_S3_CTR_20140626_01_01.JPG
-38 1350001   1350001 24465_S3_CTR_20140703_01_01.JPG
-                              archivo
-34 132000_23278_S3_CTR_20140626_3.JPG
-38 135000_24465_S3_CTR_20140703_3.JPG
 
 
 ### Copiar imágenes, grabaciones y videos a carpetas
 
-Imágenes:
-14
-```{r}
 dir_j = "/Volumes/sacmod"
 
 # en Windows
@@ -957,11 +895,10 @@ rutas_avi_3 <- unique(rutas_avi_3)
 
 fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
 sum(!fallas)
-```
 
-Arreglando Ids
 
-```{r}
+
+#### Arreglando Ids
 # creamos una nueva id, de tal manera que sea incrementos de 1,2, 3...
 
 # Los siguientes ids se arreglan de manera automática por no ser llaves foráneas
@@ -1106,11 +1043,9 @@ Archivo_grabadora <- Archivo_grabadora %>%
   mutate(grabadora_id = id_sec) %>%
   select(-id_sec)
 glimpse(Archivo_grabadora)
-```
 
 
-
-```{r}
+### Exportando directo a postgresql
 library(RPostgreSQL)
 drv <- dbDriver("PostgreSQL")
 base_output <- dbConnect(drv = drv, dbname = "snmb_piloto", port = 5432,
@@ -1118,41 +1053,49 @@ base_output <- dbConnect(drv = drv, dbname = "snmb_piloto", port = 5432,
   user = "mortiz", password = "bowles")
 
 dbWriteTable(base_output, "conglomerado_muestra", 
-  as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+  as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE, 
+  row.names = 0)
 
-dbWriteTable(base_output, "sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "sitio_muestra", as.data.frame(Sitio_muestra), 
+  overwrite = FALSE, append = TRUE, row.names = 0)
 
-dbWriteTable(base_output, "transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "transecto_especies_invasoras_muestra", 
+  as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, 
+  append = TRUE, row.names = 0)
+dbWriteTable(base_output, "especie_invasora", as.data.frame(Especie_invasora), 
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_especie_invasora", 
+  as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE, 
+  row.names = 0)
 
-dbWriteTable(base_output, "transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "transecto_huellas_excretas_muestra", 
+  as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, 
+  append = TRUE, row.names = 0)
+dbWriteTable(base_output, "huella_excreta", as.data.frame(Huella_excreta), 
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_huella_excreta", 
+  as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE, 
+  row.names = 0)
 
-dbWriteTable(base_output, "camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "camara", as.data.frame(Camara), overwrite = FALSE, 
+  append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_camara", as.data.frame(Archivo_camara), 
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "imagen_referencia_camara", 
+  as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE, 
+  row.names = 0)
 
-dbWriteTable(base_output, "grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "grabadora", as.data.frame(Grabadora), 
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_grabadora", as.data.frame(Archivo_grabadora), 
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "imagen_referencia_microfonos", 
+  as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE, 
+  row.names = 0)
 
 #dbCommit(base_output)
 dbDisconnect(base_output)
-```
 
-Observaciones en camara_id:
-
-        id camara_id         archivo_nombre_original
-34 1320001   1320001 23278_S3_CTR_20140626_01_01.JPG
-38 1350001   1350001 24465_S3_CTR_20140703_01_01.JPG
-                              archivo
-34 132000_23278_S3_CTR_20140626_3.JPG
-38 135000_24465_S3_CTR_20140703_3.JPG
-
-
-=======
 #Videos (no se copió ninguno) porque no tienen camera_id:
 #videos <- archivos_camara$filename %in% grep(".AVI", archivos_camara$filename, value = TRUE)
 #archivos_camara[videos,]
