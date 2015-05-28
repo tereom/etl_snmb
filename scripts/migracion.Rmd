@@ -1068,6 +1068,42 @@ dbWriteTable(base_output, "grabadora", as.data.frame(Grabadora), overwrite = FAL
 dbWriteTable(base_output, "archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
 dbWriteTable(base_output, "imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE, row.names = 0)
 
+# Actualizando secuencias para las id's:
+
+#-- Login to psql and run the following
+#-- What is the result?
+dbGetQuery(base_output, "SELECT MAX(id) FROM Conglomerado_muestra;")
+
+#-- Then run...
+#-- This should be higher than the last result.
+dbGetQuery(base_output, "SELECT nextval('Conglomerado_muestra_id_seq');")
+
+#-- If it's not higher... run this set the sequence last to your highest pid it. 
+#-- (wise to run a quick pg_dump first...)
+
+dbGetQuery(base_output, "SELECT setval('Conglomerado_muestra_id_seq', (SELECT MAX(id) FROM Conglomerado_muestra));")
+dbGetQuery(base_output, "SELECT setval('Sitio_muestra_id_seq', (SELECT MAX(id) FROM Sitio_muestra));")
+
+dbGetQuery(base_output, "SELECT setval('Transecto_especies_invasoras_muestra_id_seq', (SELECT MAX(id) FROM Transecto_especies_invasoras_muestra));")
+dbGetQuery(base_output, "SELECT setval('Especie_invasora_id_seq', (SELECT MAX(id) FROM Especie_invasora));")
+dbGetQuery(base_output, "SELECT setval('Archivo_especie_invasora_id_seq', (SELECT MAX(id) FROM Archivo_especie_invasora));")
+
+dbGetQuery(base_output, "SELECT setval('Transecto_huellas_excretas_muestra_id_seq', (SELECT MAX(id) FROM Transecto_huellas_excretas_muestra));")
+dbGetQuery(base_output, "SELECT setval('Huella_excreta_id_seq', (SELECT MAX(id) FROM Huella_excreta));")
+dbGetQuery(base_output, "SELECT setval('Archivo_huella_excreta_id_seq', (SELECT MAX(id) FROM Archivo_huella_excreta));")
+
+dbGetQuery(base_output, "SELECT setval('Camara_id_seq', (SELECT MAX(id) FROM Camara));")
+dbGetQuery(base_output, "SELECT setval('Archivo_camara_id_seq', (SELECT MAX(id) FROM Archivo_camara));")
+dbGetQuery(base_output, "SELECT setval('Imagen_referencia_camara_id_seq', (SELECT MAX(id) FROM Imagen_referencia_camara));")
+
+dbGetQuery(base_output, "SELECT setval('Grabadora_id_seq', (SELECT MAX(id) FROM Grabadora));")
+dbGetQuery(base_output, "SELECT setval('Archivo_grabadora_id_seq', (SELECT MAX(id) FROM Archivo_grabadora));")
+dbGetQuery(base_output, "SELECT setval('Imagen_referencia_microfonos_id_seq', (SELECT MAX(id) FROM Imagen_referencia_microfonos));")
+
+#-- if your tables might have no rows
+#-- false means the set value will be returned by the next nextval() call    
+#SELECT setval('your_table_id_seq', COALESCE((SELECT MAX(id)+1 FROM your_table), 1), false);
+
 #dbCommit(base_output)
 dbDisconnect(base_output)
 ```
@@ -1134,42 +1170,6 @@ rutas_avi_3 <- unique(rutas_avi_3)
 
 fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
 sum(!fallas)
-```
-
-###Copiando las bases del cliente nuevo a una carpeta para fusionarlas con la base anterior
-
-```{r}
-dir_j = "/Volumes/sacmod"
-
-#bases del nuevo cliente:
-bases_web2py_rutas <- list.files(path = dir_j,
-recursive = TRUE, full.names = TRUE, pattern ="storage\\.sqlite$")
-
-#seleccionando bases
-
-bases_web2py_rutas_2<-c(
-  "/Volumes/sacmod/data_10_03_2015/SARMOD_CONANP_ENTREGA_02032015/SARMOD_CONANP_ENTREGA_TEHCUI_02032015/ENTREGA_1/CLIENTE_SNMB_1/CLIENTE_SNMB_1/applications/init/databases/storage.sqlite",
-  "/Volumes/sacmod/data_10_03_2015/SARMOD_OSC_ENTREGA_02032015/SARMOD_FMCN_ENTREGA_ESPACIOAUTONOMO_02032015/ENTREGA_1/CLIENTE_SNMB_#1/CLIENTE_SNMB_1/applications/init/databases/storage.sqlite",
-  "/Volumes/sacmod/sarmod_05052015/cliente_snmb/applications/init/databases/storage.sqlite",
-  "/Volumes/sacmod/SARMOD_CONANP_ENTREGA_1_26032015/SARMOD_CONANP_DONMARTIN_24032015/ENTREGA_1/CLIENTE_SNMB_1 conglomerado/cliente_snmb/applications/init/databases/storage.sqlite",
-  "/Volumes/sacmod/SARMOD_CONANP_ENTREGA_1_26032015/SARMOD_CONANP_RBMM_16032015/ENTREGA_1/CLIENTE_SNMB_1 conglomerado/Cliente_snmb/applications/init/databases/storage.sqlite",
-  "/Volumes/sacmod/SARMOD_CONANP_ENTREGA_1_26032015/SARMOD_CONANP_SSPM_10032015/ENTREGA_1/CLIENTE_SNMB_1 conglomerado/Cliente_snmb/applications/init/databases/storage.sqlite",
-  )
-
-# copiamos a carpeta local
-copiaRenombra <- function(dir_j_archivo, dir_local, id_db, nombre){
-  # dir_j: directorio (con nombre archivo) donde se ubica la base a copiar
-  # dir_local: directorio (sin nombre de archivo) donde se copiará la base
-  # id_db: id numérico que se utilizará para distinguir bases en migración
-  # nombre: string con el nombre común que compartirán las bases
-  file.copy(dir_j_archivo, dir_local,  overwrite = FALSE)
-  file.rename(from = paste(dir_local, basename(dir_j_archivo), sep = "/"), 
-    to = paste(dir_local, "/", id_db, "_", nombre, sep = ""))
-}
-
-snmb_id <- sapply(1:length(bases_web2py_rutas_2), function(i) 
-  copiaRenombra(bases_web2py_rutas_2[i], 
-    "../datos/bases_web2py_snmb", i, "storage.sqlite"))
 ```
 
 =======
