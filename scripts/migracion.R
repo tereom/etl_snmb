@@ -17,11 +17,11 @@
 setwd("../scripts")
 
 library(plyr)
+library(dplyr)
 library(tidyr)
 library(stringr)
 library(RSQLite)
-library(dplyr)
-
+library(RPostgreSQL)
 
 ### Copiamos los archivos de J a una carpeta local.
 dir_j = "/Volumes/sacmod"
@@ -31,7 +31,11 @@ bases_rutas <- list.files(path = dir_j,
   recursive = TRUE, full.names = TRUE, pattern = "\\.db$")
 
 # bases con nombre igual al número de conglomerado
-snmb_num <- c("46239.db","47586.db","50927.db","55160.db","55652.db","56379.db","57124.db","57627.db","57905.db","58143.db","58388.db","58650.db","59144.db","60406.db","60442.db","60655.db","61164.db","61225.db","61718.db","61736.db","61925.db","62713.db","63192.db","63211.db","63432.db","63504.db","63955.db","63987.db","64223.db","66289.db","66549.db","66847.db","67141.db","67145.db","67435.db")
+snmb_num <- c("46239.db","47586.db","50927.db","55160.db","55652.db","56379.db",
+  "57124.db","57627.db","57905.db","58143.db","58388.db","58650.db","59144.db",
+  "60406.db","60442.db","60655.db","61164.db","61225.db","61718.db","61736.db",
+  "61925.db","62713.db","63192.db","63211.db","63432.db","63504.db","63955.db",
+  "63987.db","64223.db","66289.db","66549.db","66847.db","67141.db","67145.db","67435.db")
 
 snmb_nom <- 1:length(bases_rutas) %in% grep("resources/db/snmb.db", 
   bases_rutas, invert = F)
@@ -51,9 +55,9 @@ copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
     to = paste(dir_local, "/", id_db, "_", "snmb.db", sep = ""))
 }
 
-# snmb_id <- sapply(1:length(bases_snmb), function(i) 
-#   copiaRenombra(bases_snmb[i], 
-#   "../datos/bases_snmb_2", 1000*i))
+snmb_id <- sapply(1:length(bases_snmb), function(i) 
+   copiaRenombra(bases_snmb[i], 
+   "../datos/bases_snmb_2", 1000*i))
 
 # leerDbTab: función lee la base de datos (dir), extrae una tabla (tabla) y 
 # regresa un _data frame_ con la tabla.
@@ -296,7 +300,8 @@ Especie_invasora <- transecto_especies_invasoras %>%
   select(id, transecto_especies_invasoras_id, nombre_en_lista, nombre_comun, 
     nombre_cientifico, numero_individuos)  
 
-#invasora_tabs y conglomerado_fechas se utilizan para Huellas y excretas también (ver esquema).
+#invasora_tabs y conglomerado_fechas se utilizan para Huellas y excretas 
+#también (ver esquema).
 rm(invasora, archivos_invasora, archivos_invasora_tabs, 
   transecto_especies_invasoras)
 
@@ -810,96 +815,8 @@ rm(archivos_microfono, archivos_microfono_ref, archivos_microfono_ref_tabs,
 # no hay info. para crear las tablas Archivo_referencia_microfono, 
 # Imagen_referencia_grabadora
 
-
-### Escribiendo tablas en la base de datos
-base_output <- dbConnect(RSQLite::SQLite(), "../datos/bases_salida/base_output.db")
-dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE)
-
-dbWriteTable(base_output, "Transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE)
-
-dbWriteTable(base_output, "Transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE)
-
-dbWriteTable(base_output, "Camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE)
-
-dbWriteTable(base_output, "Grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora[1:100000,]), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE)
-
-#dbCommit(base_output)
-dbDisconnect(base_output)
-
-### Creando lista con nombres de archivos
-
-
-archivos <- c(
-  Archivo_especie_invasora$archivo,
-  Archivo_huella_excreta$archivo,
-  Archivo_camara$archivo,
-  Imagen_referencia_camara$archivo,
-  Archivo_grabadora$archivo,
-  Imagen_referencia_microfonos$archivo)
-
-write.table(archivos, file = "../datos/adicionales/nombres_archivos_snmb.csv", 
-  sep = ",", row.names = FALSE)
-
-
-
-
-### Copiar imágenes, grabaciones y videos a carpetas
-
-dir_j = "/Volumes/sacmod"
-
-# en Windows
-dir_j = "//madmexservices.conabio.gob.mx/sacmod/"
-
-# jpg hay errores por caracteres especiales en las rutas
-rutas_jpg <- list.files(path = dir_j, 
-  recursive = TRUE, full.names = TRUE, pattern = "\\.jpg$", ignore.case = TRUE)
-
-rutas_wav <- list.files(path = dir_j, 
-  recursive = TRUE, full.names = TRUE, pattern = "\\.wav$")
-
-rutas_avi <- list.files(path = dir_j, 
-  recursive = TRUE, full.names = TRUE, pattern = "\\.AVI$")
-
-archivos_copiar <- read.csv("../datos/adicionales/nombres_archivos_snmb.csv",
-  header = TRUE)
-
-
-rutas_jpg_2 <- str_extract(rutas_jpj, regex("[[:word:]]+\\.[[:word:]]+$"))
-rutas_jpg_3 <- rutas_jpg[rutas_jpg_2 %in% archivos_copiar$x]
-
-fallas <- file.copy(rutas_jpg_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/imagenes")
-sum(!fallas)
-
-rutas_wav <- list.files(path = dir_j, 
-  recursive = TRUE, full.names = TRUE, pattern = "\\.wav$")
-
-rutas_wav_2 <- str_extract(rutas_wav, regex("[[:word:]]+\\.[[:word:]]+$"))
-rutas_wav_3 <- rutas_wav[rutas_wav_2 %in% archivos_copiar$x]
-rutas_wav_3 <- unique(rutas_wav_3)
-
-fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
-sum(!fallas)
-
-rutas_avi_2 <- str_extract(rutas_avi, regex("[[:word:]]+\\.[[:word:]]+$"))
-rutas_avi_3 <- rutas_wav[rutas_avi_2 %in% archivos_copiar$x]
-rutas_avi_3 <- unique(rutas_avi_3)
-
-fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
-sum(!fallas)
-
-
-
-#### Arreglando Ids
-# creamos una nueva id, de tal manera que sea incrementos de 1,2, 3...
+###Arreglando Ids
+# creamos una nueva id, de tal manera que sea incrementos de 1, 2, 3...
 
 # Los siguientes ids se arreglan de manera automática por no ser llaves foráneas
 Archivo_especie_invasora$id <- 1:length(Archivo_especie_invasora$id)
@@ -911,8 +828,9 @@ Imagen_referencia_camara$id <- 1:length(Imagen_referencia_camara$id)
 Archivo_grabadora$id <- 1:length(Archivo_grabadora$id)
 Imagen_referencia_microfonos$id <- 1:length(Imagen_referencia_microfonos$id)
 
-# Para aquellos ids que sirven como laves foráneas creamos catálogos
-cat_cgl_ids <- data.frame(id = unique(Conglomerado_muestra$id)) 
+# Para aquellos ids que sirven como llaves foráneas creamos catálogos
+cat_cgl_ids <- data.frame(
+  id = unique(Conglomerado_muestra$id)) 
 cat_cgl_ids$id_sec <- 1:length(cat_cgl_ids$id)
 
 cat_transecto_ei_ids <- data.frame(
@@ -933,6 +851,7 @@ cat_grabadora_ids$id_sec <- 1:length(cat_grabadora_ids$id)
 cat_camara_ids <- data.frame(id = unique(Camara$id))
 cat_camara_ids$id_sec <- 1:length(cat_camara_ids$id)
 
+## Conglomerado y Sitio
 Conglomerado_muestra <- Conglomerado_muestra %>%
   left_join(cat_cgl_ids, by = "id") %>%
   mutate(id = id_sec) %>%
@@ -1044,58 +963,163 @@ Archivo_grabadora <- Archivo_grabadora %>%
   select(-id_sec)
 glimpse(Archivo_grabadora)
 
+rm(cat_camara_ids, cat_cgl_ids, cat_ei_ids, cat_grabadora_ids, cat_he_ids,
+  cat_transecto_ei_ids, cat_transecto_he_ids)
 
-### Exportando directo a postgresql
-library(RPostgreSQL)
-drv <- dbDriver("PostgreSQL")
-base_output <- dbConnect(drv = drv, dbname = "snmb_piloto", port = 5432,
-  host = "localhost", 
-  user = "mortiz", password = "bowles")
+save.image(file = "../datos/tablas_finales.Rdata")
 
-dbWriteTable(base_output, "conglomerado_muestra", 
-  as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE, 
-  row.names = 0)
+### Escribiendo tablas en la base de datos SQLite
 
-dbWriteTable(base_output, "sitio_muestra", as.data.frame(Sitio_muestra), 
-  overwrite = FALSE, append = TRUE, row.names = 0)
+base_output <- dbConnect(RSQLite::SQLite(), "../datos/bases_salida/base_output.db")
+dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE)
 
-dbWriteTable(base_output, "transecto_especies_invasoras_muestra", 
-  as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, 
-  append = TRUE, row.names = 0)
-dbWriteTable(base_output, "especie_invasora", as.data.frame(Especie_invasora), 
-  overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_especie_invasora", 
-  as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE, 
-  row.names = 0)
+dbWriteTable(base_output, "Transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE)
 
-dbWriteTable(base_output, "transecto_huellas_excretas_muestra", 
-  as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, 
-  append = TRUE, row.names = 0)
-dbWriteTable(base_output, "huella_excreta", as.data.frame(Huella_excreta), 
-  overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_huella_excreta", 
-  as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE, 
-  row.names = 0)
+dbWriteTable(base_output, "Transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE)
 
-dbWriteTable(base_output, "camara", as.data.frame(Camara), overwrite = FALSE, 
-  append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_camara", as.data.frame(Archivo_camara), 
-  overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "imagen_referencia_camara", 
-  as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE, 
-  row.names = 0)
+dbWriteTable(base_output, "Camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE)
 
-dbWriteTable(base_output, "grabadora", as.data.frame(Grabadora), 
-  overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_grabadora", as.data.frame(Archivo_grabadora), 
-  overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "imagen_referencia_microfonos", 
-  as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE, 
-  row.names = 0)
+dbWriteTable(base_output, "Grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE)
 
 #dbCommit(base_output)
 dbDisconnect(base_output)
 
+### Escribiendo tablas en la base de datos PostgreSQL
+
+drv <- dbDriver("PostgreSQL")
+base_output <- dbConnect(drv = drv, dbname = "snmb_fusion_1", port = 5432,
+  host = "localhost", 
+  user = "fpardo", password = "")
+
+dbWriteTable(base_output, "conglomerado_muestra", 
+  as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE, row.names = 0)
+
+dbWriteTable(base_output, "grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE, row.names = 0)
+
+# Actualizando secuencias para las id's en la base de datos PostgreSQL:
+
+#-- Login to psql and run the following
+#-- What is the result?
+dbGetQuery(base_output, "SELECT MAX(id) FROM Conglomerado_muestra;")
+
+#-- Then run...
+#-- This should be higher than the last result.
+dbGetQuery(base_output, "SELECT nextval('Conglomerado_muestra_id_seq');")
+
+#-- If it's not higher... run this set the sequence last to your highest pid it. 
+#-- (wise to run a quick pg_dump first...)
+
+dbGetQuery(base_output, "SELECT setval('Conglomerado_muestra_id_seq', (SELECT MAX(id) FROM Conglomerado_muestra));")
+dbGetQuery(base_output, "SELECT setval('Sitio_muestra_id_seq', (SELECT MAX(id) FROM Sitio_muestra));")
+
+dbGetQuery(base_output, "SELECT setval('Transecto_especies_invasoras_muestra_id_seq', (SELECT MAX(id) FROM Transecto_especies_invasoras_muestra));")
+dbGetQuery(base_output, "SELECT setval('Especie_invasora_id_seq', (SELECT MAX(id) FROM Especie_invasora));")
+dbGetQuery(base_output, "SELECT setval('Archivo_especie_invasora_id_seq', (SELECT MAX(id) FROM Archivo_especie_invasora));")
+
+dbGetQuery(base_output, "SELECT setval('Transecto_huellas_excretas_muestra_id_seq', (SELECT MAX(id) FROM Transecto_huellas_excretas_muestra));")
+dbGetQuery(base_output, "SELECT setval('Huella_excreta_id_seq', (SELECT MAX(id) FROM Huella_excreta));")
+dbGetQuery(base_output, "SELECT setval('Archivo_huella_excreta_id_seq', (SELECT MAX(id) FROM Archivo_huella_excreta));")
+
+dbGetQuery(base_output, "SELECT setval('Camara_id_seq', (SELECT MAX(id) FROM Camara));")
+dbGetQuery(base_output, "SELECT setval('Archivo_camara_id_seq', (SELECT MAX(id) FROM Archivo_camara));")
+dbGetQuery(base_output, "SELECT setval('Imagen_referencia_camara_id_seq', (SELECT MAX(id) FROM Imagen_referencia_camara));")
+
+dbGetQuery(base_output, "SELECT setval('Grabadora_id_seq', (SELECT MAX(id) FROM Grabadora));")
+dbGetQuery(base_output, "SELECT setval('Archivo_grabadora_id_seq', (SELECT MAX(id) FROM Archivo_grabadora));")
+dbGetQuery(base_output, "SELECT setval('Imagen_referencia_microfonos_id_seq', (SELECT MAX(id) FROM Imagen_referencia_microfonos));")
+
+#-- if your tables might have no rows
+#-- false means the set value will be returned by the next nextval() call    
+#SELECT setval('your_table_id_seq', COALESCE((SELECT MAX(id)+1 FROM your_table), 1), false);
+
+#dbCommit(base_output)
+dbDisconnect(base_output)
+
+### Creando lista con nombres de archivos
+
+Esta lista se utrilizará para buscar los archivos en la estructura de entregas
+guardada en el cluster.
+
+archivos <- c(
+  Archivo_especie_invasora$archivo,
+  Archivo_huella_excreta$archivo,
+  Archivo_camara$archivo,
+  Imagen_referencia_camara$archivo,
+  Archivo_grabadora$archivo,
+  Imagen_referencia_microfonos$archivo)
+
+write.table(archivos, file = "../datos/adicionales/nombres_archivos_snmb.csv", 
+  sep = ",", row.names = FALSE)
+
+### Copiar imágenes, grabaciones y videos a carpetas
+
+dir_j = "/Volumes/sacmod"
+
+# en Windows
+#dir_j = "//madmexservices.conabio.gob.mx/sacmod/"
+
+# jpg hay errores por caracteres especiales en las rutas
+rutas_jpg <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.jpg$", ignore.case = TRUE)
+
+rutas_wav <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.wav$")
+
+rutas_avi <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.AVI$")
+
+archivos_copiar <- read.csv("../datos/adicionales/nombres_archivos_snmb.csv",
+  header = TRUE)
+
+rutas_jpg_2 <- str_extract(rutas_jpg, regex("[[:word:]]+\\.[[:word:]]+$"))
+rutas_jpg_3 <- rutas_jpg[rutas_jpg_2 %in% archivos_copiar$x]
+
+fallas <- file.copy(rutas_jpg_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/imagenes")
+sum(!fallas)
+
+rutas_wav <- list.files(path = dir_j, 
+  recursive = TRUE, full.names = TRUE, pattern = "\\.wav$")
+
+rutas_wav_2 <- str_extract(rutas_wav, regex("[[:word:]]+\\.[[:word:]]+$"))
+rutas_wav_3 <- rutas_wav[rutas_wav_2 %in% archivos_copiar$x]
+rutas_wav_3 <- unique(rutas_wav_3)
+
+fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
+sum(!fallas)
+
+rutas_avi_2 <- str_extract(rutas_avi, regex("[[:word:]]+\\.[[:word:]]+$"))
+rutas_avi_3 <- rutas_wav[rutas_avi_2 %in% archivos_copiar$x]
+rutas_avi_3 <- unique(rutas_avi_3)
+
+fallas <- file.copy(rutas_wav_3, "//madmexservices.conabio.gob.mx/sacmod/snmb_piloto/grabaciones")
+sum(!fallas)
+
 #Videos (no se copió ninguno) porque no tienen camera_id:
 #videos <- archivos_camara$filename %in% grep(".AVI", archivos_camara$filename, value = TRUE)
 #archivos_camara[videos,]
+
