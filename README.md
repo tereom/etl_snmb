@@ -43,7 +43,7 @@ problemas al crear nuevos registros.
 
 Los pasos 5 a 7 se utilizan para exportar la base postgresql, los pasos 8 y 9 para la sqlite.
 
-## Carpetas y Archivos
+### Carpetas y Archivos
 La estructura es como sigue.
 ```
 etl_snmb
