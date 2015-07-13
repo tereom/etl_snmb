@@ -14,7 +14,7 @@
 # Cargamos los paquetes, RSQLite nos sirve para escribir las tablas en una base
 # de datos Sqlite.
 
-setwd("../scripts")
+#setwd("~/Documents/Documentos en uso/etl_cliente/scripts")
 
 library(plyr)
 library(dplyr)
@@ -139,14 +139,16 @@ Conglomerado_muestra <- conglomerado %>%
       "03) Propriedad Particular" = "3 Propiedad particular",
       "04) Propriedad Federal" = "4 Propiedad federal")),
     uso_suelo_tipo = NA_character_, 
-    monitoreo_tipo = "SAC-MOD", 
+    monitoreo_tipo = "SAC-MOD",
+    # El campo de institución se agregó en el esquema v12
+    institucion = "CONAFOR",
     vegetacion_tipo = NA_character_, 
     perturbado = NA,
     comentario = comment
     ) %>%
   # los campos se deben seleccionar en el orden en el que serán insertados
   select(id, nombre, fecha_visita, predio, compania, tipo, estado, municipio,
-    tenencia, uso_suelo_tipo, monitoreo_tipo, vegetacion_tipo, perturbado,
+    tenencia, uso_suelo_tipo, monitoreo_tipo, institucion, vegetacion_tipo, perturbado,
     comentario)
 
 # función para crear tablas de la forma: |id|sitio|valor|, para cada variable de
@@ -1062,7 +1064,7 @@ dbDisconnect(base_output)
 
 ### Creando lista con nombres de archivos
 
-Esta lista se utrilizará para buscar los archivos en la estructura de entregas
+Esta lista se utilizará para buscar los archivos en la estructura de entregas
 guardada en el cluster.
 
 archivos <- c(
