@@ -1,6 +1,6 @@
 # ETL SNMB
 
-Migrar base de datos con esquema de la versión piloto a base de datos con esquema final.
+Migrar base de datos con esquema de la versión piloto a base de datos con esquema final (v12).
 
 El script *migracion.R* importa las bases sqlite generadas con el cliente piloto, realiza las uniones y transformaciones
 necesarias y exporta a una base postgresql y a una base sqlite.
@@ -58,9 +58,9 @@ etl_snmb
 |   |   reporte_migracion.Rmd
 ```
 
-* bases_snmb: aquí se guardan (usando el script) las bases a fusinar.
+* bases_snmb: aquí se guardan (usando el script) las bases a fusionar.
 
 * bases_salidas: almacena la base sqlite *base_output.db* esta se guarda manualmente siguiendo el paso 8, es decir, 
-originalmente es una base sin registros pero con el esquema final, a la que se escriben los registros fusionados usando el script.
+originalmente es una base sin registros pero con el esquema final (v12), a la que se escriben los registros fusionados usando el script.
 
 * scripts: aquí están los scripts de migración y el script que reporta los resultados de la misma.
