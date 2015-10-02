@@ -30,16 +30,16 @@ más de un cliente estos registros serán idénticos.
 datos postgres y se declara el esquema usando el [fusionador](https://github.com/fpardourrutia/fusionador_snmb). Nótese que esta
 base no contiene registros, solo el esquema.
 
-6. Se escriben las tablas en la base de datos postgresql.
+6. Se escriben las tablas en la base de datos postgresql. También se copian los registros en los catálogos a partir de una base auxiliar proveniente del [cliente](https://github.com/tereom/cliente_snmb).
 
 7. Se actualiza la secuencia generadora de ids ya que R no lo hace automáticamente al insertar los registros, lo que ocasiona
 problemas al crear nuevos registros.
 
 8. Se conecta a una base de datos sqlite que tiene el esquema de la base de datos final, para esto se exporta una base de datos usando el [fusionador](https://github.com/fpardourrutia/fusionador_snmb). Análogo al paso 5 esta base no contiene registros, solo el esquema.
 
-9. Se escriben las tablas en la base sqlite.
+9. Se escriben las tablas en la base sqlite. También se copian los registros en los catálogos a partir de una base auxiliar proveniente del [cliente](https://github.com/tereom/cliente_snmb).
 
-10. Se exportan los archivos de media (imágenes, videos y grabaciones) a las carpetas ordenadas en */Volumes/sacmod*.
+11. Se exportan los archivos de media (imágenes, videos y grabaciones) a las carpetas ordenadas en */Volumes/sacmod*.
 
 Los pasos 5 a 7 se utilizan para exportar la base postgresql, los pasos 8 y 9 para la sqlite.
 
@@ -50,6 +50,8 @@ etl_snmb
 │   README.md
 │
 └───datos
+|   ├───aux
+|   |   |    base_cliente.db
 |   ├───bases_snmb
 |   ├───bases_salida
 |   |   |    base_output.db
@@ -57,6 +59,8 @@ etl_snmb
 |   |   migracion.R
 |   |   reporte_migracion.Rmd
 ```
+
+* aux: aquí se guarda manualmente una base del cliente de captura, correspondiente al esquema final (v12): *base_cliente.db*. Ésta base sirve para copiar la información de los catálogos a las nuevas bases.
 
 * bases_snmb: aquí se guardan (usando el script) las bases a fusionar.
 
