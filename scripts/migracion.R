@@ -42,7 +42,7 @@ snmb_nom <- 1:length(bases_rutas) %in% grep("resources/db/snmb.db",
 bases_snmb <- bases_rutas[snmb_nom | (basename(bases_rutas) %in% snmb_num)]
 basename(bases_snmb)
 
-write.table(bases_snmb, file = "../datos/adicionales/rutas_bases_snmb.csv", 
+write.table(bases_snmb, file = "../datos/aux/rutas_bases_snmb.csv", 
   sep = ",")
 
 # copiamos a carpeta local
@@ -57,7 +57,7 @@ copiaRenombra <- function(dir_j_archivo, dir_local, id_db){
 
 snmb_id <- sapply(1:length(bases_snmb), function(i) 
    copiaRenombra(bases_snmb[i], 
-   "../datos/bases_snmb_2", 1000*i))
+   "../datos/bases_snmb", 1000*i))
 
 # leerDbTab: función lee la base de datos (dir), extrae una tabla (tabla) y 
 # regresa un _data frame_ con la tabla.
@@ -100,13 +100,12 @@ conglomerado <- conglomerado_tabs %>%
 table(conglomerado_tabs$name)[table(conglomerado_tabs$name) > 1]
 # hay casos en los que tenemos un mismo conglomeradoo en 131 clientes (8745, 8917)
 subset(conglomerado_tabs, name=="8917")
-bases_snmb[109:127]
 
 ## 2. Separamos en las dos tablas Conglomerado\_muestra y Sitio\_muestra
 
 # Importando el catálogo de municipio, ya que algunos registros contienen el muni-
 # cipio numéricamente
-cat_municipio <- unique(read.csv("../datos/adicionales/municipios.csv", 
+cat_municipio <- unique(read.csv("../datos/aux/municipios.csv", 
   colClasses = "character", header = TRUE))
 
 cat_municipio <- cat_municipio %>%
@@ -973,24 +972,147 @@ save.image(file = "../datos/tablas_finales.Rdata")
 ### Escribiendo tablas en la base de datos SQLite
 
 base_output <- dbConnect(RSQLite::SQLite(), "../datos/bases_salida/base_output.db")
-dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE)
 
-dbWriteTable(base_output, "Transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Conglomerado_muestra", as.data.frame(Conglomerado_muestra),
+  overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Sitio_muestra", as.data.frame(Sitio_muestra),
+  overwrite = FALSE, append = TRUE)
 
-dbWriteTable(base_output, "Transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Transecto_especies_invasoras_muestra",
+  as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Especie_invasora", as.data.frame(Especie_invasora),
+  overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_especie_invasora", as.data.frame(Archivo_especie_invasora),
+  overwrite = FALSE, append = TRUE)
 
-dbWriteTable(base_output, "Camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Transecto_huellas_excretas_muestra",
+  as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Huella_excreta", as.data.frame(Huella_excreta),
+  overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Archivo_huella_excreta", as.data.frame(Archivo_huella_excreta),
+  overwrite = FALSE, append = TRUE)
 
-dbWriteTable(base_output, "Grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE)
-dbWriteTable(base_output, "Imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Camara", as.data.frame(Camara), overwrite = FALSE,
+  append = TRUE)
+dbWriteTable(base_output, "Archivo_camara", as.data.frame(Archivo_camara),
+  overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Imagen_referencia_camara", as.data.frame(Imagen_referencia_camara),
+  overwrite = FALSE, append = TRUE)
+
+dbWriteTable(base_output, "Grabadora", as.data.frame(Grabadora), overwrite = FALSE,
+  append = TRUE)
+dbWriteTable(base_output, "Archivo_grabadora", as.data.frame(Archivo_grabadora),
+  overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Imagen_referencia_microfonos",
+  as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE)
+
+### Leyendo catálogos de la base del cliente:
+
+base_catalogos <- src_sqlite("../datos/aux/base_cliente.db")
+
+Cat_tipo_conglomerado <- tbl(base_catalogos, "Cat_tipo_conglomerado") %>%
+  collect()           
+Cat_estado_conglomerado <- tbl(base_catalogos, "Cat_estado_conglomerado") %>%
+  collect()       
+Cat_tenencia_conglomerado <- tbl(base_catalogos, "Cat_tenencia_conglomerado") %>%
+  collect()   
+Cat_suelo_conglomerado <- tbl(base_catalogos, "Cat_suelo_conglomerado") %>%
+  collect()         
+Cat_vegetacion_conglomerado <- tbl(base_catalogos, "Cat_vegetacion_conglomerado") %>%
+  collect()
+Cat_numero_sitio <- tbl(base_catalogos, "Cat_numero_sitio") %>%
+  collect()                     
+Cat_elipsoide <- tbl(base_catalogos, "Cat_elipsoide") %>%
+  collect()                           
+Cat_resolucion_camara <- tbl(base_catalogos, "Cat_resolucion_camara") %>%
+  collect()           
+Cat_sensibilidad_camara <- tbl(base_catalogos, "Cat_sensibilidad_camara") %>%
+  collect()       
+Cat_numero_transecto <- tbl(base_catalogos, "Cat_numero_transecto") %>%
+  collect()             
+Cat_numero_individuos <- tbl(base_catalogos, "Cat_numero_individuos") %>%
+  collect()           
+Cat_conabio_invasoras <- tbl(base_catalogos, "Cat_conabio_invasoras") %>%
+  collect()           
+Cat_municipio_conglomerado <- tbl(base_catalogos, "Cat_municipio_conglomerado") %>%
+  collect() 
+Cat_material_carbono <- tbl(base_catalogos, "Cat_material_carbono") %>%
+  collect()             
+Cat_grado_carbono <- tbl(base_catalogos, "Cat_grado_carbono") %>%
+  collect()                   
+Cat_transecto_direccion <- tbl(base_catalogos, "Cat_transecto_direccion") %>%
+  collect()       
+Cat_forma_vida <- tbl(base_catalogos, "Cat_forma_vida") %>%
+  collect()                         
+Cat_condiciones_ambientales <- tbl(base_catalogos, "Cat_condiciones_ambientales") %>%
+  collect()
+Cat_tipo_impacto <- tbl(base_catalogos, "Cat_tipo_impacto") %>%
+  collect()                     
+Cat_severidad_impactos <- tbl(base_catalogos, "Cat_severidad_impactos") %>%
+  collect()         
+Cat_agente_impactos <- tbl(base_catalogos, "Cat_agente_impactos") %>%
+  collect()               
+Cat_estatus_impactos <- tbl(base_catalogos, "Cat_estatus_impactos") %>%
+  collect()             
+Cat_prop_afectacion <- tbl(base_catalogos, "Cat_prop_afectacion") %>%
+  collect()               
+Cat_incendio <- tbl(base_catalogos, "Cat_incendio") %>%
+  collect()                             
+Cat_conabio_aves <- tbl(base_catalogos, "Cat_conabio_aves") %>%
+  collect()                     
+
+### Escribiendo catálogos en la base de datos SQLite
+
+dbWriteTable(base_output, "Cat_tipo_conglomerado",
+  as.data.frame(Cat_tipo_conglomerado), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_estado_conglomerado",
+  as.data.frame(Cat_estado_conglomerado), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_tenencia_conglomerado",
+  as.data.frame(Cat_tenencia_conglomerado), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_suelo_conglomerado",
+  as.data.frame(Cat_suelo_conglomerado), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_vegetacion_conglomerado",
+  as.data.frame(Cat_vegetacion_conglomerado), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_numero_sitio",
+  as.data.frame(Cat_numero_sitio), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_elipsoide",
+  as.data.frame(Cat_elipsoide), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_resolucion_camara",
+  as.data.frame(Cat_resolucion_camara), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_sensibilidad_camara",
+  as.data.frame(Cat_sensibilidad_camara), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_numero_transecto",
+  as.data.frame(Cat_numero_transecto), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_numero_individuos",
+  as.data.frame(Cat_numero_individuos), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_conabio_invasoras",
+  as.data.frame(Cat_conabio_invasoras), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_municipio_conglomerado",
+  as.data.frame(Cat_municipio_conglomerado), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_material_carbono",
+  as.data.frame(Cat_material_carbono), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_grado_carbono",
+  as.data.frame(Cat_grado_carbono), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_transecto_direccion",
+  as.data.frame(Cat_transecto_direccion), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_forma_vida",
+  as.data.frame(Cat_forma_vida), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_condiciones_ambientales",
+  as.data.frame(Cat_condiciones_ambientales), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_tipo_impacto",
+  as.data.frame(Cat_tipo_impacto), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_severidad_impactos",
+  as.data.frame(Cat_severidad_impactos), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_agente_impactos",
+  as.data.frame(Cat_agente_impactos), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_estatus_impactos",
+  as.data.frame(Cat_estatus_impactos), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_prop_afectacion",
+  as.data.frame(Cat_prop_afectacion), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_incendio",
+  as.data.frame(Cat_incendio), overwrite = FALSE, append = TRUE)
+dbWriteTable(base_output, "Cat_conabio_aves",
+  as.data.frame(Cat_conabio_aves), overwrite = FALSE, append = TRUE)
 
 #dbCommit(base_output)
 dbDisconnect(base_output)
@@ -998,30 +1120,43 @@ dbDisconnect(base_output)
 ### Escribiendo tablas en la base de datos PostgreSQL
 
 drv <- dbDriver("PostgreSQL")
-base_output <- dbConnect(drv = drv, dbname = "snmb_fusion_1", port = 5432,
+base_output <- dbConnect(drv = drv, dbname = "snmb_v12", port = 5432,
   host = "localhost", 
   user = "fpardo", password = "")
 
-dbWriteTable(base_output, "conglomerado_muestra", 
-  as.data.frame(Conglomerado_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "conglomerado_muestra", as.data.frame(Conglomerado_muestra),
+  overwrite = FALSE, append = TRUE, row.names = 0)
 
-dbWriteTable(base_output, "sitio_muestra", as.data.frame(Sitio_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "sitio_muestra", as.data.frame(Sitio_muestra),
+  overwrite = FALSE, append = TRUE, row.names = 0)
 
-dbWriteTable(base_output, "transecto_especies_invasoras_muestra", as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "especie_invasora", as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_especie_invasora", as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "transecto_especies_invasoras_muestra",
+  as.data.frame(Transecto_especies_invasoras_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "especie_invasora",
+  as.data.frame(Especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_especie_invasora",
+  as.data.frame(Archivo_especie_invasora), overwrite = FALSE, append = TRUE, row.names = 0)
 
-dbWriteTable(base_output, "transecto_huellas_excretas_muestra", as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "huella_excreta", as.data.frame(Huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_huella_excreta", as.data.frame(Archivo_huella_excreta), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "transecto_huellas_excretas_muestra",
+  as.data.frame(Transecto_huellas_excretas_muestra), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "huella_excreta", as.data.frame(Huella_excreta),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_huella_excreta", as.data.frame(Archivo_huella_excreta),
+  overwrite = FALSE, append = TRUE, row.names = 0)
 
-dbWriteTable(base_output, "camara", as.data.frame(Camara), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_camara", as.data.frame(Archivo_camara), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "imagen_referencia_camara", as.data.frame(Imagen_referencia_camara), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "camara", as.data.frame(Camara), overwrite = FALSE,
+  append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_camara", as.data.frame(Archivo_camara),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "imagen_referencia_camara", as.data.frame(Imagen_referencia_camara),
+  overwrite = FALSE, append = TRUE, row.names = 0)
 
-dbWriteTable(base_output, "grabadora", as.data.frame(Grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "archivo_grabadora", as.data.frame(Archivo_grabadora), overwrite = FALSE, append = TRUE, row.names = 0)
-dbWriteTable(base_output, "imagen_referencia_microfonos", as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "grabadora", as.data.frame(Grabadora), overwrite = FALSE,
+  append = TRUE, row.names = 0)
+dbWriteTable(base_output, "archivo_grabadora", as.data.frame(Archivo_grabadora),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "imagen_referencia_microfonos",
+  as.data.frame(Imagen_referencia_microfonos), overwrite = FALSE, append = TRUE, row.names = 0)
 
 # Actualizando secuencias para las id's en la base de datos PostgreSQL:
 
@@ -1036,36 +1171,156 @@ dbGetQuery(base_output, "SELECT nextval('Conglomerado_muestra_id_seq');")
 #-- If it's not higher... run this set the sequence last to your highest pid it. 
 #-- (wise to run a quick pg_dump first...)
 
-dbGetQuery(base_output, "SELECT setval('Conglomerado_muestra_id_seq', (SELECT MAX(id) FROM Conglomerado_muestra));")
-dbGetQuery(base_output, "SELECT setval('Sitio_muestra_id_seq', (SELECT MAX(id) FROM Sitio_muestra));")
+dbGetQuery(base_output,
+  "SELECT setval('Conglomerado_muestra_id_seq', (SELECT MAX(id) FROM Conglomerado_muestra));")
+dbGetQuery(base_output,
+  "SELECT setval('Sitio_muestra_id_seq', (SELECT MAX(id) FROM Sitio_muestra));")
 
-dbGetQuery(base_output, "SELECT setval('Transecto_especies_invasoras_muestra_id_seq', (SELECT MAX(id) FROM Transecto_especies_invasoras_muestra));")
-dbGetQuery(base_output, "SELECT setval('Especie_invasora_id_seq', (SELECT MAX(id) FROM Especie_invasora));")
-dbGetQuery(base_output, "SELECT setval('Archivo_especie_invasora_id_seq', (SELECT MAX(id) FROM Archivo_especie_invasora));")
+dbGetQuery(base_output,
+  "SELECT setval('Transecto_especies_invasoras_muestra_id_seq', (SELECT MAX(id) FROM Transecto_especies_invasoras_muestra));")
+dbGetQuery(base_output,
+  "SELECT setval('Especie_invasora_id_seq', (SELECT MAX(id) FROM Especie_invasora));")
+dbGetQuery(base_output,
+  "SELECT setval('Archivo_especie_invasora_id_seq', (SELECT MAX(id) FROM Archivo_especie_invasora));")
 
-dbGetQuery(base_output, "SELECT setval('Transecto_huellas_excretas_muestra_id_seq', (SELECT MAX(id) FROM Transecto_huellas_excretas_muestra));")
-dbGetQuery(base_output, "SELECT setval('Huella_excreta_id_seq', (SELECT MAX(id) FROM Huella_excreta));")
-dbGetQuery(base_output, "SELECT setval('Archivo_huella_excreta_id_seq', (SELECT MAX(id) FROM Archivo_huella_excreta));")
+dbGetQuery(base_output,
+  "SELECT setval('Transecto_huellas_excretas_muestra_id_seq', (SELECT MAX(id) FROM Transecto_huellas_excretas_muestra));")
+dbGetQuery(base_output,
+  "SELECT setval('Huella_excreta_id_seq', (SELECT MAX(id) FROM Huella_excreta));")
+dbGetQuery(base_output,
+  "SELECT setval('Archivo_huella_excreta_id_seq', (SELECT MAX(id) FROM Archivo_huella_excreta));")
 
-dbGetQuery(base_output, "SELECT setval('Camara_id_seq', (SELECT MAX(id) FROM Camara));")
-dbGetQuery(base_output, "SELECT setval('Archivo_camara_id_seq', (SELECT MAX(id) FROM Archivo_camara));")
-dbGetQuery(base_output, "SELECT setval('Imagen_referencia_camara_id_seq', (SELECT MAX(id) FROM Imagen_referencia_camara));")
+dbGetQuery(base_output,
+  "SELECT setval('Camara_id_seq', (SELECT MAX(id) FROM Camara));")
+dbGetQuery(base_output,
+  "SELECT setval('Archivo_camara_id_seq', (SELECT MAX(id) FROM Archivo_camara));")
+dbGetQuery(base_output,
+  "SELECT setval('Imagen_referencia_camara_id_seq', (SELECT MAX(id) FROM Imagen_referencia_camara));")
 
-dbGetQuery(base_output, "SELECT setval('Grabadora_id_seq', (SELECT MAX(id) FROM Grabadora));")
-dbGetQuery(base_output, "SELECT setval('Archivo_grabadora_id_seq', (SELECT MAX(id) FROM Archivo_grabadora));")
-dbGetQuery(base_output, "SELECT setval('Imagen_referencia_microfonos_id_seq', (SELECT MAX(id) FROM Imagen_referencia_microfonos));")
+dbGetQuery(base_output,
+  "SELECT setval('Grabadora_id_seq', (SELECT MAX(id) FROM Grabadora));")
+dbGetQuery(base_output,
+  "SELECT setval('Archivo_grabadora_id_seq', (SELECT MAX(id) FROM Archivo_grabadora));")
+dbGetQuery(base_output,
+  "SELECT setval('Imagen_referencia_microfonos_id_seq', (SELECT MAX(id) FROM Imagen_referencia_microfonos));")
 
 #-- if your tables might have no rows
 #-- false means the set value will be returned by the next nextval() call    
 #SELECT setval('your_table_id_seq', COALESCE((SELECT MAX(id)+1 FROM your_table), 1), false);
+
+### Escribiendo catálogos en la base de datos PostgreSQL:
+
+dbWriteTable(base_output, "cat_tipo_conglomerado", as.data.frame(Cat_tipo_conglomerado),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_estado_conglomerado", as.data.frame(Cat_estado_conglomerado),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_tenencia_conglomerado", as.data.frame(Cat_tenencia_conglomerado),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_suelo_conglomerado", as.data.frame(Cat_suelo_conglomerado),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_vegetacion_conglomerado", as.data.frame(Cat_vegetacion_conglomerado),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_numero_sitio", as.data.frame(Cat_numero_sitio),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_elipsoide", as.data.frame(Cat_elipsoide),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_resolucion_camara", as.data.frame(Cat_resolucion_camara),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_sensibilidad_camara", as.data.frame(Cat_sensibilidad_camara),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_numero_transecto", as.data.frame(Cat_numero_transecto),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_numero_individuos", as.data.frame(Cat_numero_individuos),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_conabio_invasoras", as.data.frame(Cat_conabio_invasoras),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_municipio_conglomerado", as.data.frame(Cat_municipio_conglomerado),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_material_carbono", as.data.frame(Cat_material_carbono),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_grado_carbono", as.data.frame(Cat_grado_carbono),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_transecto_direccion", as.data.frame(Cat_transecto_direccion),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_forma_vida", as.data.frame(Cat_forma_vida),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_condiciones_ambientales", as.data.frame(Cat_condiciones_ambientales),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_tipo_impacto", as.data.frame(Cat_tipo_impacto),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_severidad_impactos", as.data.frame(Cat_severidad_impactos),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_agente_impactos", as.data.frame(Cat_agente_impactos),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_estatus_impactos", as.data.frame(Cat_estatus_impactos),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_prop_afectacion", as.data.frame(Cat_prop_afectacion),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_incendio", as.data.frame(Cat_incendio),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+dbWriteTable(base_output, "cat_conabio_aves", as.data.frame(Cat_conabio_aves),
+  overwrite = FALSE, append = TRUE, row.names = 0)
+
+# Actualizando secuencias para las id's de los catálogos en la base de datos Postgres
+
+dbGetQuery(base_output,
+  "SELECT setval('cat_tipo_conglomerado_id_seq', (SELECT MAX(id) FROM cat_tipo_conglomerado));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_estado_conglomerado_id_seq', (SELECT MAX(id) FROM cat_estado_conglomerado));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_tenencia_conglomerado_id_seq', (SELECT MAX(id) FROM cat_tenencia_conglomerado));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_suelo_conglomerado_id_seq', (SELECT MAX(id) FROM cat_suelo_conglomerado));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_vegetacion_conglomerado_id_seq', (SELECT MAX(id) FROM cat_vegetacion_conglomerado));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_numero_sitio_id_seq', (SELECT MAX(id) FROM cat_numero_sitio));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_elipsoide_id_seq', (SELECT MAX(id) FROM cat_elipsoide));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_resolucion_camara_id_seq', (SELECT MAX(id) FROM cat_resolucion_camara));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_sensibilidad_camara_id_seq', (SELECT MAX(id) FROM cat_sensibilidad_camara));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_numero_transecto_id_seq', (SELECT MAX(id) FROM cat_numero_transecto));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_numero_individuos_id_seq', (SELECT MAX(id) FROM cat_numero_individuos));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_conabio_invasoras_id_seq', (SELECT MAX(id) FROM cat_conabio_invasoras));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_municipio_conglomerado_id_seq', (SELECT MAX(id) FROM cat_municipio_conglomerado));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_material_carbono_id_seq', (SELECT MAX(id) FROM cat_material_carbono));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_grado_carbono_id_seq', (SELECT MAX(id) FROM cat_grado_carbono));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_transecto_direccion_id_seq', (SELECT MAX(id) FROM cat_transecto_direccion));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_forma_vida_id_seq', (SELECT MAX(id) FROM cat_forma_vida));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_condiciones_ambientales_id_seq', (SELECT MAX(id) FROM cat_condiciones_ambientales));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_tipo_impacto_id_seq', (SELECT MAX(id) FROM cat_tipo_impacto));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_severidad_impactos_id_seq', (SELECT MAX(id) FROM cat_severidad_impactos));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_agente_impactos_id_seq', (SELECT MAX(id) FROM cat_agente_impactos));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_estatus_impactos_id_seq', (SELECT MAX(id) FROM cat_estatus_impactos));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_prop_afectacion_id_seq', (SELECT MAX(id) FROM cat_prop_afectacion));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_incendio_id_seq', (SELECT MAX(id) FROM cat_incendio));")
+dbGetQuery(base_output,
+  "SELECT setval('cat_conabio_aves_id_seq', (SELECT MAX(id) FROM cat_conabio_aves));")
 
 #dbCommit(base_output)
 dbDisconnect(base_output)
 
 ### Creando lista con nombres de archivos
 
-Esta lista se utilizará para buscar los archivos en la estructura de entregas
-guardada en el cluster.
+#Esta lista se utilizará para buscar los archivos en la estructura de entregas
+#guardada en el cluster.
 
 archivos <- c(
   Archivo_especie_invasora$archivo,
@@ -1075,7 +1330,7 @@ archivos <- c(
   Archivo_grabadora$archivo,
   Imagen_referencia_microfonos$archivo)
 
-write.table(archivos, file = "../datos/adicionales/nombres_archivos_snmb.csv", 
+write.table(archivos, file = "../datos/aux/nombres_archivos_snmb.csv", 
   sep = ",", row.names = FALSE)
 
 ### Copiar imágenes, grabaciones y videos a carpetas
@@ -1095,7 +1350,7 @@ rutas_wav <- list.files(path = dir_j,
 rutas_avi <- list.files(path = dir_j, 
   recursive = TRUE, full.names = TRUE, pattern = "\\.AVI$")
 
-archivos_copiar <- read.csv("../datos/adicionales/nombres_archivos_snmb.csv",
+archivos_copiar <- read.csv("../datos/aux/nombres_archivos_snmb.csv",
   header = TRUE)
 
 rutas_jpg_2 <- str_extract(rutas_jpg, regex("[[:word:]]+\\.[[:word:]]+$"))
