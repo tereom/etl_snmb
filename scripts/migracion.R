@@ -1,5 +1,5 @@
 
-# Migracion del esquema v12 al esquema v14
+# Migracion del esquema v12 al esquema v15
 
 # Supuestos:
 # 
@@ -21,28 +21,48 @@ library(RPostgreSQL)
 
 base_input <- src_sqlite("../datos/2016_11_09.sqlite")
 
-tablas <- src_tbls(base_input)
+nombres_tablas <- src_tbls(base_input)
 # Notar que las tablas que no fueron creadas por Web2py no vienen en el respaldo
 # SQLite, sólo en el Postgres. Por ello, se deberán crear código SQL para cada una
 # y correrlo en la nueva base de datos migrada, o conectarse directo a la base
 # PostgreSQL.
 
-datos <- llply(tablas, function(nombre, base){
+tablas <- llply(nombres_tablas, function(nombre, base){
   collect(tbl(base, nombre), n = Inf)
 }, base = base_input)
 
-names(datos) <- tablas
+names(tablas) <- nombres_tablas
+
+### Actualización de "Conglomerado_muestra"
+
+################################################################################
+# Conglomerado_muestra_nueva
+################################################################################
+Conglomerado_muestra_nueva <- tablas$Conglomerado_muestra %>%
+  mutate(
+    version_cliente = "3"
+  )
+
+### Actualización de "Archivo_camara"
+
+################################################################################
+# Archivo_camara_nueva
+################################################################################
+Archivo_camara_nueva <- tablas$Archivo_camara %>%
+  mutate(
+    timestamp_ecoinformatica = rep(NA, nrow(.))
+  )
 
 ### Transecto_especies_invasoras_muestra y Transecto_huellas_excretas_muestra ->
 ### Transecto_muestra
 
 # Revisando los nombres de las columnas.
-colnames(datos$Transecto_especies_invasoras_muestra)
-colnames(datos$Transecto_huellas_excretas_muestra)
+colnames(tablas$Transecto_especies_invasoras_muestra)
+colnames(tablas$Transecto_huellas_excretas_muestra)
 
 # Revisando si no hay registros de más
-nrow(datos$Transecto_especies_invasoras_muestra)
-datos$Transecto_especies_invasoras_muestra %>%
+nrow(tablas$Transecto_especies_invasoras_muestra)
+tablas$Transecto_especies_invasoras_muestra %>%
   select(
     conglomerado_muestra_id,
     transecto_numero
@@ -52,16 +72,16 @@ datos$Transecto_especies_invasoras_muestra %>%
 # Difieren en 1 los números de registros, quiere decir que hay un muestreo de transecto con
 # mismo "conglomerado_muestra_id" y "transecto_numero" registrado dos veces.
 
-datos$Transecto_especies_invasoras_muestra %>%
+tablas$Transecto_especies_invasoras_muestra %>%
   group_by(conglomerado_muestra_id, transecto_numero) %>%
   tally() %>%
   arrange(desc(n))
 # 813 Transecto 4 es el que está duplicado con id's 880 y 881.
 
-datos$Transecto_especies_invasoras_muestra %>%
+tablas$Transecto_especies_invasoras_muestra %>%
   filter(conglomerado_muestra_id == 813, transecto_numero == "Transecto 4")
 
-nrow(datos$Transecto_huellas_excretas_muestra) == datos$Transecto_huellas_excretas_muestra %>%
+nrow(tablas$Transecto_huellas_excretas_muestra) == tablas$Transecto_huellas_excretas_muestra %>%
   select(
     conglomerado_muestra_id,
     transecto_numero
@@ -71,17 +91,17 @@ nrow(datos$Transecto_huellas_excretas_muestra) == datos$Transecto_huellas_excret
 # Difieren en 1 los números de registros, quiere decir que hay un muestreo de transecto con
 # mismo "conglomerado_muestra_id" y "transecto_numero" registrado dos veces.
 
-datos$Transecto_huellas_excretas_muestra %>%
+tablas$Transecto_huellas_excretas_muestra %>%
   group_by(conglomerado_muestra_id, transecto_numero) %>%
   tally() %>%
   arrange(desc(n))
 
-datos$Transecto_huellas_excretas_muestra %>%
+tablas$Transecto_huellas_excretas_muestra %>%
   filter(conglomerado_muestra_id == 1036, transecto_numero == "Transecto 2")
 # 1036 Transecto 2 es el que está duplicado con id's 1408 y 1409
 
 # Revisando el tipo de datos de los comentarios
-datos$Transecto_huellas_excretas_muestra %>%
+tablas$Transecto_huellas_excretas_muestra %>%
   select(comentario) %>%
   filter(is.na(comentario) | comentario == "") %>%
   is.na() %>%
@@ -90,11 +110,11 @@ datos$Transecto_huellas_excretas_muestra %>%
 # No hay comentarios con NA: si salen NA's, son artefactos del join.
 
 # Construyendo "Transecto_muestra_aux" a partir de los dos anteriores:
-Transecto_muestra_aux <- datos$Transecto_especies_invasoras_muestra %>%
+Transecto_muestra_aux <- tablas$Transecto_especies_invasoras_muestra %>%
   # filtrando registros duplicados
   filter(id != 881) %>%
   # haciendo el join bilateral por "conglomerado_muestra_id" y "transecto_numero"
-  full_join(datos$Transecto_huellas_excretas_muestra %>%
+  full_join(tablas$Transecto_huellas_excretas_muestra %>%
       # con los datos filtrados
       filter(id != 1409),
     by = c("conglomerado_muestra_id", "transecto_numero"),
@@ -130,7 +150,7 @@ Transecto_muestra_aux %>%
 ################################################################################
 # Especie_invasora_nueva
 ################################################################################
-Especie_invasora_nueva <- datos$Especie_invasora %>%
+Especie_invasora_nueva <- tablas$Especie_invasora %>%
   left_join(Transecto_muestra_aux %>%
       select(
         transecto_muestra_id,
@@ -141,14 +161,14 @@ Especie_invasora_nueva <- datos$Especie_invasora %>%
 
 # Algunas comprobaciones.
 
-nrow(Especie_invasora_nueva) == nrow(datos$Especie_invasora)
+nrow(Especie_invasora_nueva) == nrow(tablas$Especie_invasora)
 View(Especie_invasora_nueva)
 sum(is.na(Especie_invasora_nueva$transecto_muestra_id))
 
 ################################################################################
 # Huella_excreta_nueva
 ################################################################################
-Huella_excreta_nueva <- datos$Huella_excreta %>%
+Huella_excreta_nueva <- tablas$Huella_excreta %>%
   left_join(Transecto_muestra_aux %>%
       select(
         transecto_muestra_id,
@@ -159,7 +179,7 @@ Huella_excreta_nueva <- datos$Huella_excreta %>%
 
 # Algunas comprobaciones.
 
-nrow(Huella_excreta_nueva) == nrow(datos$Huella_excreta)
+nrow(Huella_excreta_nueva) == nrow(tablas$Huella_excreta)
 View(Huella_excreta_nueva)
 sum(is.na(Huella_excreta_nueva$transecto_muestra_id))
 
@@ -184,12 +204,12 @@ Transecto_muestra_nueva <- Transecto_muestra_aux %>%
 ################################################################################
 # Avistamiento_aves_nueva
 ################################################################################
-Avistamiento_aves_nueva <- datos$Conteo_ave
+Avistamiento_aves_nueva <- tablas$Conteo_ave
 
 ################################################################################
 # Archivo_avistamiento_aves_nueva
 ################################################################################
-Archivo_avistamiento_aves_nueva <- datos$Archivo_conteo_ave %>%
+Archivo_avistamiento_aves_nueva <- tablas$Archivo_conteo_ave %>%
   select(
     id,
     avistamiento_aves_id = conteo_ave_id,
@@ -197,21 +217,46 @@ Archivo_avistamiento_aves_nueva <- datos$Archivo_conteo_ave %>%
     archivo
   )
 
-### Actualizando "Arbol_cuadrante"
+### Actualizando de "Arbol_cuadrante"
 
 ################################################################################
 # Arbol_cuadrante_nueva
 ################################################################################
-Arbol_cuadrante_nueva <- datos$Arbol_cuadrante %>%
+Arbol_cuadrante_nueva <- tablas$Arbol_cuadrante %>%
   mutate(
     cambios = rep("", nrow(.)),
     forma_vida = rep("", nrow(.)),
     diametro_normal = as.character(diametro_normal)
   )
 
-## Creando la lista con las tablas de salida:
+### Creando la lista con las tablas de salida:
+
+tablas_nuevas <- tablas
+
+tablas_nuevas$Conglomerado_muestra <- Conglomerado_muestra_nueva
+
+tablas_nuevas$Archivo_camara <- Archivo_camara_nueva
+
+tablas_nuevas$Especie_invasora <- Especie_invasora_nueva
+tablas_nuevas$Huella_excreta <- Huella_excreta_nueva
+tablas_nuevas$Transecto_especies_invasoras_muestra <- NULL
+tablas_nuevas$Transecto_huellas_excretas_muestra <- NULL
+tablas_nuevas$Transecto_muestra <- Transecto_muestra_nueva
+
+tablas_nuevas$Avistamiento_aves <- Avistamiento_aves_nueva
+tablas_nuevas$Conteo_ave <- NULL
+
+tablas_nuevas$Archivo_avistamiento_aves <- Archivo_avistamiento_aves_nueva
+tablas_nuevas$Archivo_conteo_ave <- NULL
+
+tablas_nuevas$Arbol_cuadrante <- Arbol_cuadrante_nueva
+
+names(tablas_nuevas)
 
 
+##Idea: usando el fusionador v14 manejar la info de los clientes v5, luego migrar
+##  los esquemas de las bases de los clientes (fusionadas) a v15, e insertarlas en
+## este esquema con un fusionador v15.
 
 ### Escribiendo tablas en la base de datos SQLite
 
